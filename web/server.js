@@ -120,6 +120,11 @@ app.post("/chat", async (req, res) => {
   }
 });
 
+// Proxy Deepgram key to client (avoids exposing key in browser source)
+app.get("/deepgram-key", (req, res) => {
+  res.json({ key: process.env.DEEPGRAM_API_KEY });
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Archie server running at http://localhost:${PORT}`);
