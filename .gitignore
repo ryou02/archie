@@ -19,5 +19,3 @@ CLAUDE.md
 # Node
 web/node_modules/
 
-# Plugin build output
-plugin/*.rbxm
