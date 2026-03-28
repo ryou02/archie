@@ -36,13 +36,15 @@ document.addEventListener("DOMContentLoaded", () => {
     BuildState.update({
       avatarState: "idle",
       buildStatus: "Something went wrong. Try again.",
-      activeStepId: "plan",
+      activeStepId: BuildState.state.steps.length ? "vision" : null,
     });
-    BuildState.updateStep("plan", {
-      status: "active",
-      progress: 20,
-      detail: "Let's try that one more time.",
-    });
+    if (BuildState.state.steps.length) {
+      BuildState.updateStep("vision", {
+        status: "active",
+        progress: 20,
+        detail: "Let's try that one more time.",
+      });
+    }
   };
 
   Chat.onArchieResponse = (speech) => {
@@ -81,11 +83,13 @@ document.addEventListener("DOMContentLoaded", () => {
       avatarState: "idle",
       buildStatus: "Ready for the next idea",
     });
-    BuildState.updateStep("polish", {
-      status: "done",
-      progress: 100,
-      detail: "Everything is ready to show.",
-    });
+    if (BuildState.state.steps.length) {
+      BuildState.updateStep("gameplay", {
+        status: "done",
+        progress: 100,
+        detail: "Everything is ready to show.",
+      });
+    }
   };
 
   const micBtn = document.getElementById("mic-btn");
@@ -128,27 +132,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function beginBuildFlow(text) {
   BuildState.reset();
+  const steps = BuildState.createStepsFromPrompt(text);
   BuildState.update({
     avatarState: "thinking",
-    activeStepId: "plan",
+    activeStepId: "vision",
     buildStatus: "Planning the build",
+    steps,
   });
-  BuildState.updateStep("plan", {
+  BuildState.updateStep("vision", {
     status: "active",
     progress: 42,
     detail: `Thinking about ${summarizeTopic(text)}.`,
   });
-  BuildState.updateStep("scene", {
+  BuildState.updateStep("world", {
     status: "upcoming",
     progress: 0,
     detail: "",
   });
-  BuildState.updateStep("objects", {
+  BuildState.updateStep("encounters", {
     status: "upcoming",
     progress: 0,
     detail: "",
   });
-  BuildState.updateStep("polish", {
+  BuildState.updateStep("gameplay", {
     status: "upcoming",
     progress: 0,
     detail: "",
@@ -157,25 +163,25 @@ function beginBuildFlow(text) {
 
 function moveBuildFlowForward(speech) {
   BuildState.update({
-    activeStepId: "objects",
+    activeStepId: "encounters",
     buildStatus: "Building the preview",
   });
-  BuildState.updateStep("plan", {
+  BuildState.updateStep("vision", {
     status: "done",
     progress: 100,
     detail: "The idea is locked in.",
   });
-  BuildState.updateStep("scene", {
+  BuildState.updateStep("world", {
     status: "done",
     progress: 100,
     detail: "The world is set up.",
   });
-  BuildState.updateStep("objects", {
+  BuildState.updateStep("encounters", {
     status: "active",
     progress: 76,
     detail: clipDetail(speech, "Adding the main pieces now."),
   });
-  BuildState.updateStep("polish", {
+  BuildState.updateStep("gameplay", {
     status: "active",
     progress: 48,
     detail: "Wrapping up the final details.",

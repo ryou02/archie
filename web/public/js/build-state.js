@@ -1,47 +1,87 @@
-const defaultSteps = [
-  {
-    id: "plan",
-    label: "Planning the build",
-    progress: 0,
-    status: "upcoming",
-    detail: "",
+const STEP_BLUEPRINTS = {
+  spooky: {
+    vision: "Mapping the survival loop",
+    world: "Shaping the spooky world",
+    encounters: "Staging zombies and set pieces",
+    gameplay: "Wiring scares and win states",
   },
-  {
-    id: "scene",
-    label: "Setting the world up",
-    progress: 0,
-    status: "upcoming",
-    detail: "",
+  default: {
+    vision: "Mapping the game loop",
+    world: "Shaping the world",
+    encounters: "Staging characters and set pieces",
+    gameplay: "Wiring gameplay and polish",
   },
-  {
-    id: "objects",
-    label: "Adding cool objects",
-    progress: 0,
-    status: "upcoming",
-    detail: "",
-  },
-  {
-    id: "polish",
-    label: "Finishing the details",
-    progress: 0,
-    status: "upcoming",
-    detail: "",
-  },
-];
+};
 
-function cloneSteps() {
-  return defaultSteps.map((step) => ({ ...step }));
+function summarizePrompt(text) {
+  const cleaned = (text || "").trim().replace(/\s+/g, " ");
+
+  if (!cleaned) {
+    return "your game idea";
+  }
+
+  return cleaned.length > 54 ? `${cleaned.slice(0, 54).trim()}...` : cleaned;
+}
+
+function pickBlueprint(prompt) {
+  const normalized = (prompt || "").toLowerCase();
+
+  if (/(spooky|scary|haunted|horror|zombie|ghost|monster)/.test(normalized)) {
+    return STEP_BLUEPRINTS.spooky;
+  }
+
+  return STEP_BLUEPRINTS.default;
+}
+
+function createStepsFromPrompt(prompt) {
+  const blueprint = pickBlueprint(prompt);
+  const topic = summarizePrompt(prompt);
+
+  return [
+    {
+      id: "vision",
+      label: blueprint.vision,
+      progress: 0,
+      status: "upcoming",
+      detail: `Locking in ${topic}.`,
+    },
+    {
+      id: "world",
+      label: blueprint.world,
+      progress: 0,
+      status: "upcoming",
+      detail: "",
+    },
+    {
+      id: "encounters",
+      label: blueprint.encounters,
+      progress: 0,
+      status: "upcoming",
+      detail: "",
+    },
+    {
+      id: "gameplay",
+      label: blueprint.gameplay,
+      progress: 0,
+      status: "upcoming",
+      detail: "",
+    },
+  ];
+}
+
+function createBaseState() {
+  return {
+    avatarState: "idle",
+    overallProgress: 0,
+    activeStepId: null,
+    buildStatus: "Tell Archie what to build",
+    steps: [],
+  };
 }
 
 function createBuildState() {
   return {
-    state: {
-      avatarState: "idle",
-      overallProgress: 0,
-      activeStepId: defaultSteps[0].id,
-      buildStatus: "Waiting for a build idea",
-      steps: cloneSteps(),
-    },
+    state: createBaseState(),
     listeners: new Set(),
 
     subscribe(listener) {
@@ -59,24 +99,24 @@ function createBuildState() {
       this.notify();
     },
 
+    createStepsFromPrompt(prompt) {
+      return createStepsFromPrompt(prompt);
+    },
+
     updateStep(stepId, stepPatch) {
       const steps = this.state.steps.map((step) =>
         step.id === stepId ? { ...step, ...stepPatch } : step
       );
       const overallProgress =
-        steps.reduce((sum, step) => sum + step.progress, 0) / steps.length;
+        steps.length > 0
+          ? steps.reduce((sum, step) => sum + step.progress, 0) / steps.length
+          : 0;
 
       this.update({ steps, overallProgress });
     },
 
     reset() {
-      this.state = {
-        avatarState: "idle",
-        overallProgress: 0,
-        activeStepId: defaultSteps[0].id,
-        buildStatus: "Waiting for a build idea",
-        steps: cloneSteps(),
-      };
+      this.state = createBaseState();
       this.notify();
     },
   };
@@ -89,5 +129,9 @@ if (typeof window !== "undefined") {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { BuildState, createBuildState, defaultSteps };
+  module.exports = {
+    BuildState,
+    createBuildState,
+    createStepsFromPrompt,
+  };
 }
