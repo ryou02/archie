@@ -1,26 +1,28 @@
 document.addEventListener("DOMContentLoaded", () => {
+  TaskPanel.init();
   Chat.init();
+  VoiceOutput.init();
+  VoiceInput.init();
 
-  // Avatar init
-  const waitForAvatar = setInterval(() => {
-    if (window.Avatar) {
-      clearInterval(waitForAvatar);
+  BuildState.update({
+    avatarState: "idle",
+    buildStatus: "Tell Archie what to build",
+  });
+
+  const waitForScenes = setInterval(() => {
+    if (window.Avatar && window.Diorama) {
+      clearInterval(waitForScenes);
       window.Avatar.init();
+      window.Diorama.init();
     }
   }, 50);
 
-  // Voice output
-  VoiceOutput.init();
-
-  // When Archie responds, speak it
   Chat.onArchieResponse = (speech) => {
     if (speech) {
       VoiceOutput.speak(speech);
     }
   };
 
-  // Voice input
-  VoiceInput.init();
   VoiceInput.onTranscript = (text) => {
     Chat.handleUserMessage(text);
   };

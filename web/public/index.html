@@ -16,20 +16,44 @@
 </head>
 <body>
   <div id="app">
-    <div id="avatar-container"></div>
-    <div id="chat-container">
-      <div id="chat-history"></div>
-      <div id="chat-input-row">
-        <input type="text" id="chat-input" placeholder="Type here..." />
-        <button id="mic-btn" title="Hold to talk">🎤</button>
-      </div>
-    </div>
+    <main id="story-shell">
+      <section id="story-stage" aria-label="Archie build preview">
+        <section id="avatar-panel" aria-labelledby="avatar-status">
+          <div class="panel-header">
+            <p class="eyebrow">Archie</p>
+            <p id="avatar-status">Ready to build</p>
+          </div>
+          <div id="avatar-container"></div>
+        </section>
+        <section id="diorama-panel" aria-labelledby="build-status">
+          <div class="panel-header">
+            <p class="eyebrow">Build Preview</p>
+            <p id="build-status">Waiting for a build idea</p>
+          </div>
+          <div id="diorama-container"></div>
+        </section>
+      </section>
+      <aside id="activity-rail" aria-label="Build progress">
+        <section id="progress-card" aria-live="polite"></section>
+        <section id="task-panel" aria-live="polite"></section>
+        <section id="chat-container" aria-label="Chat with Archie">
+          <div id="chat-history"></div>
+          <div id="chat-input-row">
+            <input type="text" id="chat-input" placeholder="Tell Archie what to build..." />
+            <button id="mic-btn" title="Hold to talk" aria-label="Hold to talk">🎤</button>
+          </div>
+        </section>
+      </aside>
+    </main>
   </div>
   <script src="js/api.js"></script>
+  <script src="js/build-state.js"></script>
   <script src="js/voice-input.js"></script>
   <script src="js/voice-output.js"></script>
   <script src="js/chat.js"></script>
+  <script src="js/task-panel.js"></script>
   <script type="module" src="js/avatar.js"></script>
+  <script type="module" src="js/diorama.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
