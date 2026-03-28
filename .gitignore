@@ -15,7 +15,7 @@ web/.env
 .claude/
 docs/superpowers/
 CLAUDE.md
+.worktrees/
 
 # Node
 web/node_modules/
-
