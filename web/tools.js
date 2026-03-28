@@ -1,8 +1,53 @@
 const TOOL_DEFINITIONS = [
-  // === Building & Instances ===
+  // === Assets & Toolbox (ALWAYS try these first for any object) ===
+  {
+    name: "search_toolbox",
+    description:
+      "ALWAYS call this FIRST when the user wants ANY object (car, tree, house, sword, NPC, etc.). Searches the Roblox Creator Store for free models. You MUST use this before trying to build anything from Parts. Returns asset IDs you can pass to insert_asset.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description:
+            "Search keyword (e.g., 'medieval castle', 'car', 'sword')",
+        },
+        maxResults: {
+          type: "number",
+          description: "Maximum results to return (default: 5)",
+        },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "insert_asset",
+    description:
+      "Insert a model from the Roblox Creator Store into the game by asset ID. Use this after search_toolbox returns results.",
+    input_schema: {
+      type: "object",
+      properties: {
+        assetId: {
+          type: "number",
+          description: "The Roblox asset ID from search_toolbox results",
+        },
+        parent: {
+          type: "string",
+          description: "Path to parent (default: Workspace)",
+        },
+        position: {
+          type: "string",
+          description: "Position as 'x,y,z' (optional)",
+        },
+      },
+      required: ["assetId"],
+    },
+  },
+
+  // === Building & Instances (only use AFTER search_toolbox finds nothing) ===
   {
     name: "run_code",
-    description: "Execute Luau code in Roblox Studio. Use for complex operations that don't fit other tools. Returns printed output. All changes are undoable.",
+    description: "Execute Luau code in Roblox Studio. ONLY use this as a LAST RESORT for building objects — first try search_toolbox + insert_asset. Use run_code for logic, scripting, and operations that don't involve placing objects. Returns printed output. All changes are undoable.",
     input_schema: {
       type: "object",
       properties: {
@@ -14,7 +59,7 @@ const TOOL_DEFINITIONS = [
   {
     name: "create_instance",
     description:
-      "Create a new Roblox instance (Part, Model, Script, etc.) with properties and parent it to a location.",
+      "Create a basic Roblox instance (Part, Script, SpawnLocation, etc.). For complex objects like cars, trees, houses — use search_toolbox + insert_asset instead.",
     input_schema: {
       type: "object",
       properties: {
@@ -187,51 +232,6 @@ const TOOL_DEFINITIONS = [
           description: "Maximum tree depth (default: 3)",
         },
       },
-    },
-  },
-
-  // === Assets & Toolbox ===
-  {
-    name: "search_toolbox",
-    description:
-      "Search the Roblox Creator Store / Toolbox for free models, meshes, audio, and images by keyword. Returns asset IDs and names.",
-    input_schema: {
-      type: "object",
-      properties: {
-        query: {
-          type: "string",
-          description:
-            "Search keyword (e.g., 'medieval castle', 'car', 'sword')",
-        },
-        maxResults: {
-          type: "number",
-          description: "Maximum results to return (default: 5)",
-        },
-      },
-      required: ["query"],
-    },
-  },
-  {
-    name: "insert_asset",
-    description:
-      "Insert a model or asset from the Roblox Creator Store into the game by asset ID.",
-    input_schema: {
-      type: "object",
-      properties: {
-        assetId: {
-          type: "number",
-          description: "The Roblox asset ID to insert",
-        },
-        parent: {
-          type: "string",
-          description: "Path to parent (default: Workspace)",
-        },
-        position: {
-          type: "string",
-          description: "Position as 'x,y,z' (optional)",
-        },
-      },
-      required: ["assetId"],
     },
   },
 

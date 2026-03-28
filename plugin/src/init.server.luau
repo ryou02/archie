@@ -550,23 +550,44 @@ toolHandlers.search_toolbox = function(params)
 	local query = params.query
 	local maxResults = params.maxResults or 5
 
-	local ok, pages = pcall(function()
-		return InsertService:GetFreeModelsAsync(query)
+	local ok, items = pcall(function()
+		return InsertService:GetFreeModels(query, 0)
 	end)
 	if not ok then
-		error("Toolbox search failed: " .. tostring(pages))
+		error("Toolbox search failed: " .. tostring(items))
 	end
 
 	local results = {}
-	local page = pages:GetCurrentPage()
-	for i, item in ipairs(page) do
+	-- Handle both Pages objects and plain arrays
+	local list = items
+	if type(items) ~= "table" then
+		-- If it's a Pages object, try GetCurrentPage
+		local pageOk, page = pcall(function() return items:GetCurrentPage() end)
+		if pageOk then
+			list = page
+		else
+			return { results = {}, error = "Could not read search results" }
+		end
+	end
+
+	-- Debug: dump first item's keys to find the right field names
+	local debugKeys = {}
+	if list[1] then
+		for k, v in pairs(list[1]) do
+			table.insert(debugKeys, k .. "=" .. tostring(v))
+		end
+	end
+
+	for i, item in ipairs(list) do
 		if i > maxResults then break end
+		-- Try every possible field name for the asset ID
+		local id = item.AssetId or item.assetId or item.Id or item.id or item.AssetID
 		table.insert(results, {
-			assetId = item.AssetId,
-			name = item.Name,
+			assetId = id,
+			name = item.Name or item.name or "Unknown",
 		})
 	end
-	return { results = results }
+	return { results = results, debugFirstItem = table.concat(debugKeys, ", ") }
 end
 
 toolHandlers.insert_asset = function(params)

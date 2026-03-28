@@ -13,20 +13,28 @@ Your personality:
 - Keep spoken responses SHORT (1-5 words): "On it!", "Got it!", "Done!", "Let me build that!"
 - Never explain code or teach — just build what they ask for
 
-You have tools to interact with Roblox Studio. Use them to:
-- Read the current game state before making changes
-- Build what the kid asks for
-- Verify your work after making changes
-- Fix errors if something goes wrong
+WORKFLOW — follow this exact order for EVERY request:
+1. Check the scene: call get_scene_summary
+2. Search for assets: call search_toolbox with a relevant keyword
+3. Insert the best result: call insert_asset with the assetId
+4. ONLY if search_toolbox returns 0 results, fall back to run_code or create_instance
 
-When you're done with a task, respond with text that Archie will say out loud. Keep it short and casual.
+<example>
+User: "Make me a car"
+You should call: get_scene_summary → search_toolbox({query: "car"}) → insert_asset({assetId: ...})
+</example>
 
-Important:
-- Always check what's in the scene before building (use get_children or get_scene_summary)
-- Use specific tools (create_instance, set_properties) for simple operations
-- Use run_code for complex operations that need loops or logic
-- Use search_toolbox + insert_asset to use existing models instead of building from scratch when appropriate
-- All changes are automatically undoable via Ctrl+Z`;
+<example>
+User: "Add a tree"
+You should call: get_scene_summary → search_toolbox({query: "tree"}) → insert_asset({assetId: ...})
+</example>
+
+<example>
+User: "Build a house"
+You should call: get_scene_summary → search_toolbox({query: "house"}) → insert_asset({assetId: ...})
+</example>
+
+NEVER use run_code or create_instance to build objects without calling search_toolbox first. The toolbox has professional models that look 100x better than anything built from Parts.`;
 
 let conversationHistory = [];
 
@@ -46,6 +54,56 @@ let lastPluginPoll = 0; // timestamp of last plugin poll
 function generateToolId() {
   toolIdCounter++;
   return `tool_${toolIdCounter}`;
+}
+
+// Server-side tool handlers (don't need plugin)
+async function handleSearchToolbox(params) {
+  const query = encodeURIComponent(params.query || "");
+  const maxResults = params.maxResults || 5;
+  try {
+    // Step 1: Search for model IDs via toolbox marketplace API
+    const searchRes = await fetch(
+      `https://apis.roblox.com/toolbox-service/v1/marketplace/Model?keyword=${query}&num=${maxResults}&sortType=Relevance`,
+      { headers: { Accept: "application/json" } }
+    );
+    if (!searchRes.ok) {
+      console.error("Toolbox search failed:", searchRes.status);
+      return { result: { results: [], error: "Toolbox search unavailable" } };
+    }
+    const searchData = await searchRes.json();
+    const ids = (searchData.data || []).slice(0, maxResults).map((item) => item.id);
+
+    if (ids.length === 0) {
+      return { result: { results: [] } };
+    }
+
+    // Step 2: Get names for those IDs via items/details API
+    const detailsRes = await fetch(
+      `https://apis.roblox.com/toolbox-service/v1/items/details?assetIds=${ids.join(",")}`,
+      { headers: { Accept: "application/json" } }
+    );
+    if (!detailsRes.ok) {
+      // If details fail, return IDs without names
+      console.error("Details fetch failed:", detailsRes.status);
+      return { result: { results: ids.map((id) => ({ assetId: id, name: "Unknown" })) } };
+    }
+    const detailsData = await detailsRes.json();
+    const detailsMap = new Map();
+    for (const item of detailsData.data || []) {
+      detailsMap.set(item.asset?.id, item.asset?.name || "Unknown");
+    }
+
+    const results = ids.map((id) => ({
+      assetId: id,
+      name: detailsMap.get(id) || "Unknown",
+    }));
+
+    console.log(`[search_toolbox] "${params.query}" → ${results.length} results:`, results.map(r => `${r.name} (${r.assetId})`).join(", "));
+    return { result: { results } };
+  } catch (err) {
+    console.error("Toolbox search error:", err);
+    return { result: { results: [], error: "Toolbox search failed" } };
+  }
 }
 
 function executeToolViaPlugin(toolName, params) {
@@ -95,52 +153,143 @@ app.get("/status", (req, res) => {
   res.json({ status: "ok", pluginConnected });
 });
 
+// Reset conversation history
+app.post("/reset", (req, res) => {
+  conversationHistory = [];
+  res.json({ success: true });
+});
+
 // --- Agent Loop ---
 async function agentLoop(userMessage) {
+  const historyLengthBefore = conversationHistory.length;
   conversationHistory.push({ role: "user", content: userMessage });
 
   const MAX_ITERATIONS = 25;
   let iterations = 0;
+  let hasCalledSearchToolbox = false;
 
-  while (iterations < MAX_ITERATIONS) {
-    iterations++;
+  try {
+    while (iterations < MAX_ITERATIONS) {
+      iterations++;
 
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
-      system: SYSTEM_PROMPT,
-      tools: TOOL_DEFINITIONS,
-      messages: conversationHistory,
-    });
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 4096,
+        system: SYSTEM_PROMPT,
+        tools: TOOL_DEFINITIONS,
+        messages: conversationHistory,
+      });
 
-    // Append assistant response to history
-    conversationHistory.push({ role: "assistant", content: response.content });
+      // Append assistant response to history
+      conversationHistory.push({ role: "assistant", content: response.content });
 
-    // If Claude is done talking, extract speech and return
-    if (response.stop_reason === "end_turn") {
-      const textBlock = response.content.find((b) => b.type === "text");
-      const speech = textBlock ? textBlock.text : "Done!";
-      return { speech };
-    }
-
-    // If Claude wants to use tools, execute them
-    if (response.stop_reason === "tool_use") {
-      const toolResults = [];
-      for (const block of response.content) {
-        if (block.type === "tool_use") {
-          const result = await executeToolViaPlugin(block.name, block.input);
-          toolResults.push({
-            type: "tool_result",
-            tool_use_id: block.id,
-            content: JSON.stringify(result),
-          });
-        }
+      // If Claude is done talking, extract speech and return
+      if (response.stop_reason === "end_turn") {
+        const textBlock = response.content.find((b) => b.type === "text");
+        const speech = textBlock ? textBlock.text : "Done!";
+        return { speech };
       }
-      conversationHistory.push({ role: "user", content: toolResults });
-    }
-  }
 
-  return { speech: "Whew, that was a lot! Let me know what's next." };
+      // If Claude wants to use tools, execute them
+      if (response.stop_reason === "tool_use") {
+        const toolResults = [];
+        for (const block of response.content) {
+          if (block.type === "tool_use") {
+            // Track if search_toolbox has been called
+            if (block.name === "search_toolbox") {
+              hasCalledSearchToolbox = true;
+            }
+
+            // INTERCEPTION: Block run_code and create_instance until search_toolbox has been called
+            if (!hasCalledSearchToolbox && (block.name === "run_code" || block.name === "create_instance")) {
+              console.log(`[BLOCKED] ${block.name} called before search_toolbox — rejecting`);
+              toolResults.push({
+                type: "tool_result",
+                tool_use_id: block.id,
+                content: JSON.stringify({
+                  error: "REJECTED: You MUST call search_toolbox first before using " + block.name + ". Call search_toolbox now with a keyword describing what the user wants (e.g. 'car', 'house', 'tree'), then use insert_asset with the best assetId from the results."
+                }),
+                is_error: true,
+              });
+              continue;
+            }
+
+            // Handle search_toolbox and insert_asset via run_code
+            let result;
+            if (block.name === "insert_asset") {
+              // Use game:GetObjects() instead of InsertService:LoadAsset() to bypass auth issues
+              const assetId = block.input.assetId;
+              const parent = block.input.parent || "Workspace";
+              const insertCode = `
+local ok, objects = pcall(function() return game:GetObjects("rbxassetid://${assetId}") end)
+if not ok or not objects or #objects == 0 then
+  -- Fallback: try InsertService
+  local ok2, model = pcall(function() return game:GetService("InsertService"):LoadAsset(${assetId}) end)
+  if not ok2 then error("Could not load asset ${assetId}: " .. tostring(objects) .. " / " .. tostring(model)) end
+  objects = model:GetChildren()
+end
+local parent = ${parent === "Workspace" ? "workspace" : `game:GetService("${parent}")`}
+local inserted = {}
+for _, obj in ipairs(objects) do
+  obj.Parent = parent
+  table.insert(inserted, obj.Name)
+end
+print("Inserted: " .. table.concat(inserted, ", "))
+`;
+              result = await executeToolViaPlugin("run_code", { code: insertCode });
+              console.log(`[insert_asset] ${assetId} → ${JSON.stringify(result).slice(0, 300)}`);
+            } else if (block.name === "search_toolbox") {
+              const query = (block.input.query || "").replace(/"/g, '\\"');
+              const maxResults = block.input.maxResults || 5;
+              const searchCode = `
+local HttpService = game:GetService("HttpService")
+local InsertService = game:GetService("InsertService")
+local ok, data = pcall(function() return InsertService:GetFreeModels("${query}", 0) end)
+if not ok then print(HttpService:JSONEncode({error = tostring(data)})) return end
+local results = {}
+local items = data
+if type(data) == "table" and data[1] and data[1].Results then
+  items = data[1].Results
+end
+for i = 1, math.min(${maxResults}, #items) do
+  local item = items[i]
+  if type(item) == "table" then
+    table.insert(results, {assetId = item.AssetId or item.Id or item.assetId, name = item.Name or item.name or "Unknown"})
+  end
+end
+print(HttpService:JSONEncode({results = results}))
+`;
+              const searchResult = await executeToolViaPlugin("run_code", { code: searchCode });
+              // Parse the printed JSON from run_code output
+              try {
+                const output = searchResult.result?.output || searchResult.error || "";
+                const parsed = JSON.parse(output);
+                result = { result: parsed };
+              } catch {
+                result = searchResult;
+              }
+              console.log(`[search_toolbox] "${query}" → ${JSON.stringify(result).slice(0, 400)}`);
+            } else {
+              result = await executeToolViaPlugin(block.name, block.input);
+              console.log(`[tool] ${block.name}(${JSON.stringify(block.input).slice(0, 100)}) → ${JSON.stringify(result).slice(0, 300)}`);
+            }
+            toolResults.push({
+              type: "tool_result",
+              tool_use_id: block.id,
+              content: JSON.stringify(result),
+            });
+          }
+        }
+        conversationHistory.push({ role: "user", content: toolResults });
+      }
+    }
+
+    return { speech: "Whew, that was a lot! Let me know what's next." };
+  } catch (err) {
+    // Roll back conversation history to prevent corrupted state
+    conversationHistory.length = historyLengthBefore;
+    throw err;
+  }
 }
 
 // Chat endpoint — now runs the agent loop
@@ -195,5 +344,6 @@ app.post("/tts", async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Archie server running at http://localhost:${PORT}`);
+  console.log(`\n🚀 Archie server running at http://localhost:${PORT}`);
+  console.log(`🛡️  search_toolbox interception is ACTIVE\n`);
 });
