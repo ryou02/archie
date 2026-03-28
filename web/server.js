@@ -214,65 +214,9 @@ async function agentLoop(userMessage) {
               continue;
             }
 
-            // Handle search_toolbox and insert_asset via run_code
-            let result;
-            if (block.name === "insert_asset") {
-              // Use game:GetObjects() instead of InsertService:LoadAsset() to bypass auth issues
-              const assetId = block.input.assetId;
-              const parent = block.input.parent || "Workspace";
-              const insertCode = `
-local ok, objects = pcall(function() return game:GetObjects("rbxassetid://${assetId}") end)
-if not ok or not objects or #objects == 0 then
-  -- Fallback: try InsertService
-  local ok2, model = pcall(function() return game:GetService("InsertService"):LoadAsset(${assetId}) end)
-  if not ok2 then error("Could not load asset ${assetId}: " .. tostring(objects) .. " / " .. tostring(model)) end
-  objects = model:GetChildren()
-end
-local parent = ${parent === "Workspace" ? "workspace" : `game:GetService("${parent}")`}
-local inserted = {}
-for _, obj in ipairs(objects) do
-  obj.Parent = parent
-  table.insert(inserted, obj.Name)
-end
-print("Inserted: " .. table.concat(inserted, ", "))
-`;
-              result = await executeToolViaPlugin("run_code", { code: insertCode });
-              console.log(`[insert_asset] ${assetId} → ${JSON.stringify(result).slice(0, 300)}`);
-            } else if (block.name === "search_toolbox") {
-              const query = (block.input.query || "").replace(/"/g, '\\"');
-              const maxResults = block.input.maxResults || 5;
-              const searchCode = `
-local HttpService = game:GetService("HttpService")
-local InsertService = game:GetService("InsertService")
-local ok, data = pcall(function() return InsertService:GetFreeModels("${query}", 0) end)
-if not ok then print(HttpService:JSONEncode({error = tostring(data)})) return end
-local results = {}
-local items = data
-if type(data) == "table" and data[1] and data[1].Results then
-  items = data[1].Results
-end
-for i = 1, math.min(${maxResults}, #items) do
-  local item = items[i]
-  if type(item) == "table" then
-    table.insert(results, {assetId = item.AssetId or item.Id or item.assetId, name = item.Name or item.name or "Unknown"})
-  end
-end
-print(HttpService:JSONEncode({results = results}))
-`;
-              const searchResult = await executeToolViaPlugin("run_code", { code: searchCode });
-              // Parse the printed JSON from run_code output
-              try {
-                const output = searchResult.result?.output || searchResult.error || "";
-                const parsed = JSON.parse(output);
-                result = { result: parsed };
-              } catch {
-                result = searchResult;
-              }
-              console.log(`[search_toolbox] "${query}" → ${JSON.stringify(result).slice(0, 400)}`);
-            } else {
-              result = await executeToolViaPlugin(block.name, block.input);
-              console.log(`[tool] ${block.name}(${JSON.stringify(block.input).slice(0, 100)}) → ${JSON.stringify(result).slice(0, 300)}`);
-            }
+            // Route all tools to plugin
+            const result = await executeToolViaPlugin(block.name, block.input);
+            console.log(`[tool] ${block.name}(${JSON.stringify(block.input).slice(0, 100)}) → ${JSON.stringify(result).slice(0, 300)}`);
             toolResults.push({
               type: "tool_result",
               tool_use_id: block.id,

@@ -550,53 +550,47 @@ toolHandlers.search_toolbox = function(params)
 	local query = params.query
 	local maxResults = params.maxResults or 5
 
-	local ok, items = pcall(function()
+	local ok, data = pcall(function()
 		return InsertService:GetFreeModels(query, 0)
 	end)
 	if not ok then
-		error("Toolbox search failed: " .. tostring(items))
+		error("Toolbox search failed: " .. tostring(data))
+	end
+
+	-- GetFreeModels returns { [1] = { Results = {...}, TotalCount = N, CurrentStartIndex = N } }
+	local list = data
+	if type(data) == "table" and data[1] and data[1].Results then
+		list = data[1].Results
 	end
 
 	local results = {}
-	-- Handle both Pages objects and plain arrays
-	local list = items
-	if type(items) ~= "table" then
-		-- If it's a Pages object, try GetCurrentPage
-		local pageOk, page = pcall(function() return items:GetCurrentPage() end)
-		if pageOk then
-			list = page
-		else
-			return { results = {}, error = "Could not read search results" }
-		end
-	end
-
-	-- Debug: dump first item's keys to find the right field names
-	local debugKeys = {}
-	if list[1] then
-		for k, v in pairs(list[1]) do
-			table.insert(debugKeys, k .. "=" .. tostring(v))
-		end
-	end
-
 	for i, item in ipairs(list) do
 		if i > maxResults then break end
-		-- Try every possible field name for the asset ID
-		local id = item.AssetId or item.assetId or item.Id or item.id or item.AssetID
+		local id = item.AssetId or item.assetId or item.Id or item.id
 		table.insert(results, {
 			assetId = id,
 			name = item.Name or item.name or "Unknown",
 		})
 	end
-	return { results = results, debugFirstItem = table.concat(debugKeys, ", ") }
+	return { results = results }
 end
 
 toolHandlers.insert_asset = function(params)
 	return withUndo("Archie: insert asset " .. tostring(params.assetId), function()
-		local ok, model = pcall(function()
-			return InsertService:LoadAsset(params.assetId)
+		-- Use game:GetObjects() which works for plugin asset loading
+		local ok, objects = pcall(function()
+			return game:GetObjects("rbxassetid://" .. tostring(params.assetId))
 		end)
-		if not ok then
-			error("Failed to load asset " .. tostring(params.assetId) .. ": " .. tostring(model))
+		if not ok or not objects or #objects == 0 then
+			-- Fallback to InsertService:LoadAsset()
+			local ok2, model = pcall(function()
+				return InsertService:LoadAsset(params.assetId)
+			end)
+			if not ok2 then
+				error("Failed to load asset " .. tostring(params.assetId) .. ": " .. tostring(objects) .. " / " .. tostring(model))
+			end
+			objects = model:GetChildren()
+			model:Destroy()
 		end
 
 		local parent = resolvePath(params.parent or "Workspace")
@@ -605,19 +599,18 @@ toolHandlers.insert_asset = function(params)
 		end
 
 		local inserted = {}
-		for _, child in ipairs(model:GetChildren()) do
-			child.Parent = parent
+		for _, obj in ipairs(objects) do
+			obj.Parent = parent
 			if params.position then
 				local pos = parseVector3(params.position)
 				if pos then
 					pcall(function()
-						child:PivotTo(CFrame.new(pos))
+						obj:PivotTo(CFrame.new(pos))
 					end)
 				end
 			end
-			table.insert(inserted, { name = child.Name, path = getPath(child) })
+			table.insert(inserted, { name = obj.Name, path = getPath(obj) })
 		end
-		model:Destroy()
 		return { inserted = inserted }
 	end)
 end
