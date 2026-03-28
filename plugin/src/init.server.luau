@@ -46,7 +46,10 @@ layout.Padding = UDim.new(0, 8)
 layout.Parent = mainFrame
 
 local padding = Instance.new("UIPadding")
-padding.PaddingAll = UDim.new(0, 12)
+padding.PaddingTop = UDim.new(0, 12)
+padding.PaddingBottom = UDim.new(0, 12)
+padding.PaddingLeft = UDim.new(0, 12)
+padding.PaddingRight = UDim.new(0, 12)
 padding.Parent = mainFrame
 
 -- Status indicator
@@ -101,7 +104,10 @@ previewCorner.CornerRadius = UDim.new(0, 8)
 previewCorner.Parent = previewScroll
 
 local previewPadding = Instance.new("UIPadding")
-previewPadding.PaddingAll = UDim.new(0, 8)
+previewPadding.PaddingTop = UDim.new(0, 8)
+previewPadding.PaddingBottom = UDim.new(0, 8)
+previewPadding.PaddingLeft = UDim.new(0, 8)
+previewPadding.PaddingRight = UDim.new(0, 8)
 previewPadding.Parent = previewScroll
 
 local codeLabel = Instance.new("TextLabel")
