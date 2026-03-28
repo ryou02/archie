@@ -1,7 +1,7 @@
 const Api = {
   async sendMessage(text, history) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 120000); // 2 min timeout
+    const timeout = setTimeout(() => controller.abort(), 600000); // 10 min timeout
     try {
       const res = await fetch("/chat", {
         method: "POST",
