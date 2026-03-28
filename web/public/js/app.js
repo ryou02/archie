@@ -9,6 +9,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }, 50);
 
+  // Voice output
+  VoiceOutput.init();
+
+  // When Archie responds, speak it
+  Chat.onArchieResponse = (response) => {
+    if (response.speech) {
+      VoiceOutput.speak(response.speech);
+    }
+  };
+
   // Voice input
   VoiceInput.init();
   VoiceInput.onTranscript = (text) => {

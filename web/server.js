@@ -125,6 +125,43 @@ app.get("/deepgram-key", (req, res) => {
   res.json({ key: process.env.DEEPGRAM_API_KEY });
 });
 
+// TTS proxy — client sends text, server calls ElevenLabs, returns audio
+app.post("/tts", async (req, res) => {
+  const { text } = req.body;
+
+  try {
+    const ttsRes = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
+      {
+        method: "POST",
+        headers: {
+          "xi-api-key": process.env.ELEVENLABS_API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text,
+          model_id: "eleven_turbo_v2_5",
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+          },
+        }),
+      }
+    );
+
+    if (!ttsRes.ok) {
+      throw new Error(`ElevenLabs error: ${ttsRes.status}`);
+    }
+
+    const arrayBuffer = await ttsRes.arrayBuffer();
+    res.set("Content-Type", "audio/mpeg");
+    res.send(Buffer.from(arrayBuffer));
+  } catch (err) {
+    console.error("TTS error:", err);
+    res.status(500).json({ error: "TTS failed" });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Archie server running at http://localhost:${PORT}`);
