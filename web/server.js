@@ -365,16 +365,37 @@ async function agentLoop(userMessage) {
           : tool
       );
 
-      // Trim old tool results to save tokens — keep only the last 3 iterations full,
-      // replace older tool results with short summaries
+      // Cap conversation history — keep first 2 messages (greeting context) + last 30
+      // This prevents unbounded growth in long sessions
+      const MAX_HISTORY = 30;
+      if (conversationHistory.length > MAX_HISTORY + 2) {
+        const first2 = conversationHistory.slice(0, 2);
+        const recent = conversationHistory.slice(-MAX_HISTORY);
+        conversationHistory.length = 0;
+        conversationHistory.push(...first2, ...recent);
+      }
+
+      // Trim old tool results to save tokens — keep last 6 messages full,
+      // aggressively truncate older tool results
       const trimmedMessages = conversationHistory.map((msg, idx) => {
-        // Only trim tool_result messages that are old (not in the last 6 messages)
         if (idx < conversationHistory.length - 6 && msg.role === "user" && Array.isArray(msg.content)) {
           return {
             ...msg,
             content: msg.content.map((block) => {
-              if (block.type === "tool_result" && block.content && block.content.length > 200) {
-                return { ...block, content: block.content.slice(0, 200) + "...(trimmed)" };
+              if (block.type === "tool_result" && block.content && block.content.length > 100) {
+                return { ...block, content: block.content.slice(0, 100) + "...(trimmed)" };
+              }
+              return block;
+            }),
+          };
+        }
+        // Even recent tool results get trimmed if they're huge (e.g. get_scene_summary)
+        if (msg.role === "user" && Array.isArray(msg.content)) {
+          return {
+            ...msg,
+            content: msg.content.map((block) => {
+              if (block.type === "tool_result" && block.content && block.content.length > 2000) {
+                return { ...block, content: block.content.slice(0, 2000) + "...(trimmed)" };
               }
               return block;
             }),
@@ -385,7 +406,7 @@ async function agentLoop(userMessage) {
 
       const response = await anthropic.messages.create({
         model: "claude-opus-4-6",
-        max_tokens: 8192,
+        max_tokens: 1024,
         system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
         tools: cachedTools,
         messages: trimmedMessages,
