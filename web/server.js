@@ -125,32 +125,25 @@ app.get("/deepgram-key", (req, res) => {
   res.json({ key: process.env.DEEPGRAM_API_KEY });
 });
 
-// TTS proxy — client sends text, server calls ElevenLabs, returns audio
+// TTS proxy — client sends text, server calls Deepgram Aura, returns audio
 app.post("/tts", async (req, res) => {
   const { text } = req.body;
 
   try {
     const ttsRes = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
+      "https://api.deepgram.com/v1/speak?model=aura-asteria-en",
       {
         method: "POST",
         headers: {
-          "xi-api-key": process.env.ELEVENLABS_API_KEY,
+          Authorization: `Token ${process.env.DEEPGRAM_API_KEY}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          text,
-          model_id: "eleven_turbo_v2_5",
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-          },
-        }),
+        body: JSON.stringify({ text }),
       }
     );
 
     if (!ttsRes.ok) {
-      throw new Error(`ElevenLabs error: ${ttsRes.status}`);
+      throw new Error(`Deepgram TTS error: ${ttsRes.status}`);
     }
 
     const arrayBuffer = await ttsRes.arrayBuffer();
