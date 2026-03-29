@@ -324,6 +324,46 @@ body {
 .btn-send:disabled { opacity: 0.3; cursor: not-allowed; }
 .btn-send:focus-visible { outline: 1px solid var(--aurora-green); outline-offset: 2px; }
 
+.btn-mic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.25rem;
+  padding: 0.65em 0.9em;
+  border: 1px solid rgba(74,158,255,0.22);
+  background: rgba(74,158,255,0.08);
+  color: var(--aurora-blue);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform var(--t-fast), background var(--t-fast), box-shadow var(--t-fast), border-color var(--t-fast);
+}
+
+.btn-mic:hover:not(:disabled) {
+  background: rgba(74,158,255,0.16);
+  box-shadow: 0 0 12px rgba(74,158,255,0.10);
+}
+
+.btn-mic--active {
+  background: rgba(217,70,239,0.14);
+  border-color: rgba(217,70,239,0.28);
+  color: #f0b3ff;
+  box-shadow: 0 0 18px rgba(217,70,239,0.18);
+}
+
+.btn-mic:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.btn-mic:focus-visible {
+  outline: 1px solid var(--aurora-blue);
+  outline-offset: 2px;
+}
+
 /* ================================================================
    PROGRESS BAR
    ================================================================ */
@@ -383,4 +423,141 @@ body {
 @keyframes typing-pulse {
   0%, 60%, 100% { opacity: 0.2; transform: scale(0.8); }
   30% { opacity: 1; transform: scale(1); }
+}
+
+/* ================================================================
+   BUILD SESSION CARDS
+   ================================================================ */
+.build-row {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--panel-border);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.03));
+  box-shadow: 0 18px 34px rgba(0,0,0,0.24);
+}
+
+.build-row--live {
+  background:
+    linear-gradient(180deg, rgba(61,245,167,0.08), rgba(8,12,24,0.72));
+}
+
+.build-row--expanded {
+  padding: 1rem;
+}
+
+.build-row--compact {
+  padding: 0.9rem 1rem;
+}
+
+.build-card__head,
+.build-row__summary,
+.build-task__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.build-row__summary,
+.build-card__head {
+  align-items: flex-start;
+}
+
+.build-row__title {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.build-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.build-row__copy {
+  margin-top: 0.65rem;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.build-card__tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin-top: 0.85rem;
+}
+
+.build-task {
+  border-top: 1px solid var(--panel-divider);
+  padding-top: 0.7rem;
+}
+
+.build-task__label,
+.build-task__percent {
+  font-size: 0.72rem;
+  color: var(--text-primary);
+}
+
+.build-task__label {
+  font-weight: 600;
+}
+
+.build-task__percent {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.build-task__detail {
+  margin-top: 0.45rem;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.build-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.22rem 0.45rem;
+  border: 1px solid transparent;
+}
+
+.build-badge--running {
+  background: rgba(74,158,255,0.12);
+  border-color: rgba(74,158,255,0.22);
+  color: var(--aurora-blue);
+}
+
+.build-badge--complete {
+  background: rgba(61,245,167,0.12);
+  border-color: rgba(61,245,167,0.22);
+  color: var(--aurora-green);
+}
+
+.build-badge--failed {
+  background: rgba(217,70,239,0.12);
+  border-color: rgba(217,70,239,0.22);
+  color: #f0b3ff;
+}
+
+.build-row__toggle {
+  margin-top: 0.75rem;
+  border: 0;
+  background: transparent;
+  color: var(--aurora-green);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
 }

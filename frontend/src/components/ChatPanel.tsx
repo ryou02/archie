@@ -1,34 +1,74 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
+import BuildSessionCard from "@/components/BuildSessionCard";
+import type { BuildSession, ChatHistoryItem } from "@/lib/build-history";
 
 interface ChatPanelProps {
-  messages: Message[];
+  history: ChatHistoryItem[];
+  activeSession?: BuildSession | null;
   onSend: (text: string) => void;
+  onToggleSession?: (sessionId: string) => void;
   disabled?: boolean;
   planStatus?: string | null;
+  micSupported?: boolean;
+  micState?: "idle" | "connecting" | "recording";
+  onMicStart?: () => void;
+  onMicStop?: () => void;
 }
 
-export default function ChatPanel({ messages, onSend, disabled, planStatus }: ChatPanelProps) {
+export default function ChatPanel({
+  history,
+  activeSession,
+  onSend,
+  onToggleSession,
+  disabled,
+  planStatus,
+  micSupported = false,
+  micState = "idle",
+  onMicStart,
+  onMicStop,
+}: ChatPanelProps) {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const shouldStickRef = useRef(true);
 
   useEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && shouldStickRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [activeSession, disabled, history]);
+
+  const updateStickiness = () => {
+    if (!scrollRef.current) {
+      return;
+    }
+
+    const distanceFromBottom =
+      scrollRef.current.scrollHeight -
+      scrollRef.current.clientHeight -
+      scrollRef.current.scrollTop;
+    shouldStickRef.current = distanceFromBottom <= 96;
+  };
 
   const handleSubmit = () => {
     const text = input.trim();
     if (!text || disabled) return;
     setInput("");
     onSend(text);
+  };
+
+  const handleMicStart = (event: React.PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (disabled || !micSupported) {
+      return;
+    }
+    onMicStart?.();
+  };
+
+  const handleMicStop = (event: React.PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    onMicStop?.();
   };
 
   return (
@@ -44,33 +84,47 @@ export default function ChatPanel({ messages, onSend, disabled, planStatus }: Ch
       {/* Messages */}
       <div
         ref={scrollRef}
+        onScroll={updateStickiness}
         className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3"
         style={{ overscrollBehavior: "contain" }}
       >
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`max-w-[90%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-              msg.role === "user" ? "self-end" : "self-start"
-            }`}
-            style={{
-              background:
-                msg.role === "user"
-                  ? "rgba(74,158,255,0.12)"
-                  : "var(--surface)",
-              border: `1px solid ${
-                msg.role === "user"
-                  ? "rgba(74,158,255,0.18)"
-                  : "rgba(255,255,255,0.04)"
-              }`,
-              color: "var(--text-primary)",
-              whiteSpace: "pre-wrap",
-              fontFamily: "var(--font-body)",
-            }}
-          >
-            {msg.content}
-          </div>
-        ))}
+        {history.map((item, index) =>
+          item.type === "build-session" ? (
+            <BuildSessionCard
+              key={item.session.id}
+              session={item.session}
+              expanded={item.expanded}
+              onToggle={() => onToggleSession?.(item.session.id)}
+            />
+          ) : (
+            <div
+              key={`${item.role}-${index}`}
+              className={`max-w-[90%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                item.role === "user" ? "self-end" : "self-start"
+              }`}
+              style={{
+                background:
+                  item.role === "user"
+                    ? "rgba(74,158,255,0.12)"
+                    : "var(--surface)",
+                border: `1px solid ${
+                  item.role === "user"
+                    ? "rgba(74,158,255,0.18)"
+                    : "rgba(255,255,255,0.04)"
+                }`,
+                color: "var(--text-primary)",
+                whiteSpace: "pre-wrap",
+                fontFamily: "var(--font-body)",
+              }}
+            >
+              {item.content}
+            </div>
+          )
+        )}
+
+        {activeSession ? (
+          <BuildSessionCard session={activeSession} expanded live />
+        ) : null}
 
         {disabled && (
           <div
@@ -119,6 +173,25 @@ export default function ChatPanel({ messages, onSend, disabled, planStatus }: Ch
           className="btn-send"
         >
           Send
+        </button>
+        <button
+          type="button"
+          disabled={disabled || !micSupported}
+          className={`btn-mic ${micState !== "idle" ? "btn-mic--active" : ""}`}
+          onPointerDown={handleMicStart}
+          onPointerUp={handleMicStop}
+          onPointerLeave={handleMicStop}
+          onPointerCancel={handleMicStop}
+          aria-label="Hold to talk"
+          title={
+            micSupported
+              ? micState === "recording"
+                ? "Release to send"
+                : "Hold to talk"
+              : "Voice input unavailable"
+          }
+        >
+          {micState === "recording" ? "Rec" : micState === "connecting" ? "..." : "Mic"}
         </button>
       </div>
     </div>

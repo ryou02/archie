@@ -1,74 +1,204 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { startSession, sendMessage, type Plan, type TaskStep } from "@/lib/api";
-import ProgressBar from "@/components/ProgressBar";
-import TaskList from "@/components/TaskList";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ChatPanel from "@/components/ChatPanel";
+import ProgressBar from "@/components/ProgressBar";
 import StatusDot from "@/components/StatusDot";
+import TaskList from "@/components/TaskList";
+import {
+  mergeArchivedBuildSessions,
+  toggleBuildSessionExpanded,
+  type BuildSession,
+  type ChatHistoryItem,
+} from "@/lib/build-history";
+import {
+  getPlan,
+  sendMessage,
+  startSession,
+  type Plan,
+  type PlanSnapshot,
+  type TaskStep,
+} from "@/lib/api";
+import { useVoiceInput } from "@/lib/use-voice-input";
+import { useVoiceOutput } from "@/lib/use-voice-output";
 
-interface Message {
-  role: "user" | "assistant";
-  content: string;
+function getActiveTaskId(tasks: TaskStep[]): string | null {
+  const active = tasks.find((task) => task.status === "active");
+  if (active) {
+    return active.id;
+  }
+
+  const pending = tasks.find((task) => task.status !== "done");
+  return pending ? pending.id : tasks[0]?.id || null;
+}
+
+function appendAssistantMessage(history: ChatHistoryItem[], content: string) {
+  return [...history, { type: "text", role: "assistant", content } satisfies ChatHistoryItem];
+}
+
+function appendUserMessage(history: ChatHistoryItem[], content: string) {
+  return [...history, { type: "text", role: "user", content } satisfies ChatHistoryItem];
 }
 
 export default function BuildPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [history, setHistory] = useState<ChatHistoryItem[]>([]);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [tasks, setTasks] = useState<TaskStep[]>([]);
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [initialized, setInitialized] = useState(false);
+  const [activeSession, setActiveSession] = useState<BuildSession | null>(null);
+  const startedRef = useRef(false);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { speak } = useVoiceOutput();
 
-  useEffect(() => {
-    if (initialized) return;
-    setInitialized(true);
-    setLoading(true);
-    startSession()
-      .then((data) => {
-        if (data.speech) {
-          setMessages([{ role: "assistant", content: data.speech }]);
-        }
-        if (data.plan) setPlan(data.plan);
-        if (data.taskPlan) setTasks(data.taskPlan);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [initialized]);
-
-  const handleSend = useCallback(async (text: string) => {
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
-    setLoading(true);
-    try {
-      const data = await sendMessage(text);
-      if (data.speech) {
-        setMessages((prev) => [...prev, { role: "assistant", content: data.speech }]);
+  const syncTasks = useCallback((nextTasks: TaskStep[] | undefined) => {
+    const safeTasks = nextTasks || [];
+    setTasks(safeTasks);
+    setSelectedTask((current) => {
+      if (!safeTasks.length) {
+        return null;
       }
-      if (data.plan) setPlan(data.plan);
-      if (data.taskPlan) setTasks(data.taskPlan);
-    } catch (err) {
-      console.error(err);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "Oops, something went wrong!" },
-      ]);
-    } finally {
-      setLoading(false);
+
+      if (current && safeTasks.some((task) => task.id === current)) {
+        return current;
+      }
+
+      return getActiveTaskId(safeTasks);
+    });
+  }, []);
+
+  const applySnapshot = useCallback(
+    (snapshot: PlanSnapshot) => {
+      setPlan(snapshot.plan ?? null);
+      syncTasks(snapshot.taskPlan);
+      setActiveSession(snapshot.activeBuildSession ?? null);
+      setHistory((currentHistory) =>
+        mergeArchivedBuildSessions(
+          currentHistory,
+          snapshot.archivedBuildSessions ?? []
+        )
+      );
+    },
+    [syncTasks]
+  );
+
+  const stopPlanPolling = useCallback(() => {
+    if (pollTimerRef.current) {
+      clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
     }
   }, []);
 
+  const pollPlan = useCallback(async () => {
+    try {
+      const snapshot = await getPlan();
+      applySnapshot(snapshot);
+    } catch (error) {
+      console.error("Plan polling error:", error);
+    }
+  }, [applySnapshot]);
+
+  const startPlanPolling = useCallback(() => {
+    stopPlanPolling();
+    void pollPlan();
+    pollTimerRef.current = setInterval(() => {
+      void pollPlan();
+    }, 600);
+  }, [pollPlan, stopPlanPolling]);
+
+  useEffect(() => {
+    if (startedRef.current) {
+      return;
+    }
+
+    startedRef.current = true;
+    setLoading(true);
+
+    startSession()
+      .then((data) => {
+        applySnapshot(data);
+        if (data.speech) {
+          setHistory((currentHistory) =>
+            appendAssistantMessage(currentHistory, data.speech as string)
+          );
+          void speak(data.speech).catch((error) => {
+            console.error("TTS playback error:", error);
+          });
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+      })
+      .finally(() => setLoading(false));
+  }, [applySnapshot, speak]);
+
+  useEffect(() => stopPlanPolling, [stopPlanPolling]);
+
+  const handleSend = useCallback(
+    async (text: string) => {
+      setHistory((currentHistory) => appendUserMessage(currentHistory, text));
+      setLoading(true);
+      startPlanPolling();
+
+      try {
+        const data = await sendMessage(text);
+        stopPlanPolling();
+        applySnapshot(data);
+
+        if (data.speech) {
+          setHistory((currentHistory) =>
+            appendAssistantMessage(currentHistory, data.speech as string)
+          );
+          void speak(data.speech).catch((error) => {
+            console.error("TTS playback error:", error);
+          });
+        }
+      } catch (error) {
+        console.error(error);
+        setHistory((currentHistory) =>
+          appendAssistantMessage(currentHistory, "Oops, something went wrong!")
+        );
+
+        try {
+          const snapshot = await getPlan();
+          applySnapshot(snapshot);
+        } catch (planError) {
+          console.error("Plan refresh error:", planError);
+        }
+      } finally {
+        stopPlanPolling();
+        setLoading(false);
+      }
+    },
+    [applySnapshot, speak, startPlanPolling, stopPlanPolling]
+  );
+
+  const {
+    supported: micSupported,
+    state: micState,
+    startRecording,
+    stopRecording,
+  } = useVoiceInput({
+    onTranscript: (text) => {
+      if (text.trim()) {
+        void handleSend(text.trim());
+      }
+    },
+    onError: (error) => {
+      console.error("Voice input error:", error);
+    },
+  });
+
   const overallProgress = tasks.length
-    ? Math.round(tasks.reduce((sum, t) => sum + t.progress, 0) / tasks.length)
+    ? Math.round(tasks.reduce((sum, task) => sum + task.progress, 0) / tasks.length)
     : 0;
 
   return (
     <div className="relative h-screen overflow-hidden">
-      {/* Aurora background — full screen */}
       <div className="aurora-bg" />
       <div className="aurora-streaks" />
       <div className="stars" />
 
-      {/* Top bar — minimal, floating */}
       <header
         className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-6 py-3"
         style={{
@@ -105,8 +235,7 @@ export default function BuildPage() {
           </span>
         </div>
 
-        {/* Center progress */}
-        {tasks.length > 0 && (
+        {tasks.length > 0 ? (
           <div className="flex-1 max-w-xs mx-8">
             <div className="flex items-center gap-3">
               <ProgressBar percent={overallProgress} />
@@ -118,12 +247,13 @@ export default function BuildPage() {
               </span>
             </div>
           </div>
+        ) : (
+          <div className="flex-1" />
         )}
 
         <StatusDot />
       </header>
 
-      {/* Task overlay — top left when building */}
       {tasks.length > 0 && (
         <div
           className="absolute top-14 left-4 z-20 w-64 game-panel p-4 overflow-y-auto"
@@ -138,91 +268,111 @@ export default function BuildPage() {
                   plan?.status === "complete"
                     ? "rgba(61,245,167,0.12)"
                     : plan?.status === "building"
-                    ? "rgba(74,158,255,0.12)"
-                    : "var(--surface2)",
+                      ? "rgba(74,158,255,0.12)"
+                      : "var(--surface2)",
                 color:
                   plan?.status === "complete"
                     ? "var(--aurora-green)"
                     : plan?.status === "building"
-                    ? "var(--aurora-blue)"
-                    : "var(--text-muted)",
+                      ? "var(--aurora-blue)"
+                      : "var(--text-muted)",
                 border: `1px solid ${
                   plan?.status === "complete"
                     ? "rgba(61,245,167,0.15)"
                     : plan?.status === "building"
-                    ? "rgba(74,158,255,0.15)"
-                    : "transparent"
+                      ? "rgba(74,158,255,0.15)"
+                      : "transparent"
                 }`,
               }}
             >
               {plan?.status === "complete"
                 ? "DONE"
                 : plan?.status === "building"
-                ? "BUILDING"
-                : plan?.status === "waiting_approval"
-                ? "PLANNING"
-                : "IDLE"}
+                  ? "BUILDING"
+                  : plan?.status === "waiting_approval"
+                    ? "PLANNING"
+                    : "IDLE"}
             </span>
           </div>
 
           <TaskList
             tasks={tasks}
             selectedId={selectedTask}
-            onSelect={(t) => setSelectedTask(t.id === selectedTask ? null : t.id)}
+            onSelect={(task) =>
+              setSelectedTask(task.id === selectedTask ? null : task.id)
+            }
           />
 
-          {selectedTask &&
-            (() => {
-              const task = tasks.find((t) => t.id === selectedTask);
-              if (!task) return null;
-              return (
-                <div
-                  className="mt-3 p-3"
-                  style={{
-                    background: "var(--surface)",
-                    borderTop: "1px solid var(--panel-divider)",
-                  }}
-                >
-                  <h4
-                    className="font-bold text-xs mb-1"
-                    style={{ fontFamily: "var(--font-display)" }}
+          {selectedTask
+            ? (() => {
+                const task = tasks.find((item) => item.id === selectedTask);
+                if (!task) {
+                  return null;
+                }
+
+                return (
+                  <div
+                    className="mt-3 p-3"
+                    style={{
+                      background: "var(--surface)",
+                      borderTop: "1px solid var(--panel-divider)",
+                    }}
                   >
-                    {task.label}
-                  </h4>
-                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                    {task.detail || "Waiting to start..."}
-                  </p>
-                </div>
-              );
-            })()}
+                    <h4
+                      className="font-bold text-xs mb-1"
+                      style={{ fontFamily: "var(--font-display)" }}
+                    >
+                      {task.label}
+                    </h4>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                      {task.detail || "Waiting to start..."}
+                    </p>
+                  </div>
+                );
+              })()
+            : null}
         </div>
       )}
 
-      {/* Plan card overlay — bottom left */}
       {plan && plan.status === "waiting_approval" && (
-        <div
-          className="absolute bottom-6 left-6 z-20 game-panel p-5 max-w-md"
-        >
+        <div className="absolute bottom-6 left-6 z-20 game-panel p-5 max-w-md">
           <h3
             className="font-bold text-base mb-3"
-            style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}
+            style={{
+              fontFamily: "var(--font-display)",
+              color: "var(--text-primary)",
+            }}
           >
             {plan.name}
           </h3>
-          <div className="flex flex-col gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
+          <div
+            className="flex flex-col gap-2 text-sm"
+            style={{ color: "var(--text-secondary)" }}
+          >
             {[
               { label: "World", value: plan.world, color: "var(--aurora-green)" },
               { label: "Objects", value: plan.objects, color: "var(--aurora-teal)" },
-              ...(plan.characters ? [{ label: "Characters", value: plan.characters, color: "var(--aurora-blue)" }] : []),
+              ...(plan.characters
+                ? [
+                    {
+                      label: "Characters",
+                      value: plan.characters,
+                      color: "var(--aurora-blue)",
+                    },
+                  ]
+                : []),
               { label: "Gameplay", value: plan.gameplay, color: "var(--aurora-purple)" },
               { label: "Audio", value: plan.audio, color: "var(--aurora-blue)" },
-            ].map((item, i) => (
+            ].map((item) => (
               <div
-                key={i}
+                key={item.label}
                 className="flex gap-2 py-1"
                 style={{ borderBottom: "1px solid var(--panel-divider)" }}
               >
-                <span className="font-semibold shrink-0 w-20" style={{ color: item.color }}>
+                <span
+                  className="font-semibold shrink-0 w-20"
+                  style={{ color: item.color }}
+                >
                   {item.label}
                 </span>
                 <span>{item.value}</span>
@@ -232,7 +382,6 @@ export default function BuildPage() {
         </div>
       )}
 
-      {/* Right panel — Chat — 80% height, square, game-UI */}
       <div
         className="absolute right-4 z-20 flex flex-col"
         style={{
@@ -243,14 +392,25 @@ export default function BuildPage() {
           backdropFilter: "blur(20px) saturate(1.2)",
           WebkitBackdropFilter: "blur(20px) saturate(1.2)",
           border: "1px solid var(--panel-border)",
-          /* square — no border-radius */
         }}
       >
         <ChatPanel
-          messages={messages}
+          history={history}
+          activeSession={activeSession}
           onSend={handleSend}
+          onToggleSession={(sessionId) =>
+            setHistory((currentHistory) =>
+              toggleBuildSessionExpanded(currentHistory, sessionId)
+            )
+          }
           disabled={loading}
           planStatus={plan?.status}
+          micSupported={micSupported}
+          micState={micState}
+          onMicStart={() => {
+            void startRecording();
+          }}
+          onMicStop={stopRecording}
         />
       </div>
     </div>

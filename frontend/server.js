@@ -292,7 +292,6 @@ let conversationHistory = [];
 
 // --- Tool Queue ---
 const toolQueue = [];
-const toolResults = new Map();
 const toolResultWaiters = new Map();
 let toolIdCounter = 0;
 let lastPluginPoll = 0;
@@ -300,75 +299,6 @@ let lastPluginPoll = 0;
 function generateToolId() {
   toolIdCounter++;
   return `tool_${toolIdCounter}`;
-}
-
-async function handleSearchToolbox(params) {
-  const query = encodeURIComponent(params.query || "");
-  const maxResults = params.maxResults || 5;
-  try {
-    const searchRes = await fetch(
-      `https://apis.roblox.com/toolbox-service/v1/marketplace/Model?keyword=${query}&num=${maxResults}&sortType=Relevance`,
-      { headers: { Accept: "application/json" } }
-    );
-    if (!searchRes.ok) {
-      return { result: { results: [], error: "Toolbox search unavailable" } };
-    }
-    const searchData = await searchRes.json();
-    const ids = (searchData.data || []).slice(0, maxResults).map((item) => item.id);
-    if (ids.length === 0) return { result: { results: [] } };
-
-    const detailsRes = await fetch(
-      `https://apis.roblox.com/toolbox-service/v1/items/details?assetIds=${ids.join(",")}`,
-      { headers: { Accept: "application/json" } }
-    );
-    if (!detailsRes.ok) {
-      return { result: { results: ids.map((id) => ({ assetId: id, name: "Unknown" })) } };
-    }
-    const detailsData = await detailsRes.json();
-    const detailsMap = new Map();
-    for (const item of detailsData.data || []) {
-      const asset = item.asset || {};
-      const creator = item.creator || {};
-      const voting = item.voting || {};
-      const upVotes = voting.upVotes || 0;
-      const downVotes = voting.downVotes || 0;
-      const totalVotes = upVotes + downVotes;
-      const approvalPercent = totalVotes > 0 ? Math.round((upVotes / totalVotes) * 100) : 0;
-      detailsMap.set(asset.id, {
-        name: asset.name || "Unknown",
-        creatorName: creator.name || "Unknown",
-        isVerifiedCreator: creator.isVerifiedCreator || false,
-        hasScripts: asset.hasScripts || false,
-        scriptCount: asset.scriptCount || 0,
-        upVotes, downVotes, approvalPercent,
-      });
-    }
-
-    let results = ids.map((id) => {
-      const info = detailsMap.get(id) || { name: "Unknown", creatorName: "Unknown", isVerifiedCreator: false, hasScripts: false, scriptCount: 0, upVotes: 0, downVotes: 0, approvalPercent: 0 };
-      let safetyScore = 0;
-      if (info.isVerifiedCreator) safetyScore += 50;
-      if (info.approvalPercent >= 80) safetyScore += 30;
-      else if (info.approvalPercent >= 60) safetyScore += 15;
-      if (info.upVotes >= 100) safetyScore += 20;
-      else if (info.upVotes >= 10) safetyScore += 10;
-      if (info.scriptCount > 5) safetyScore -= 20;
-      return { assetId: id, name: info.name, creator: info.creatorName, verified: info.isVerifiedCreator, approval: `${info.approvalPercent}%`, votes: info.upVotes, scripts: info.scriptCount, safetyScore };
-    });
-
-    results.sort((a, b) => b.safetyScore - a.safetyScore);
-    results = results.filter((r) => {
-      const pct = parseInt(r.approval);
-      if (r.votes + (r.votes > 0 ? r.votes * ((100 - pct) / pct) : 0) > 20 && pct < 40) return false;
-      return true;
-    });
-
-    console.log(`[search_toolbox] "${params.query}" → ${results.length} results`);
-    return { result: { results } };
-  } catch (err) {
-    console.error("Toolbox search error:", err);
-    return { result: { results: [], error: "Toolbox search failed" } };
-  }
 }
 
 function executeToolViaPlugin(toolName, params) {

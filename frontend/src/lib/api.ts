@@ -1,28 +1,34 @@
+import type { BuildSession } from "@/lib/build-history";
+
 const API_BASE = "";
 
-export async function startSession(): Promise<{
-  speech: string;
+export interface PlanSnapshot {
+  speech?: string;
   plan?: Plan | null;
   taskPlan?: TaskStep[];
-}> {
+  activeBuildSession?: BuildSession | null;
+  archivedBuildSessions?: BuildSession[];
+}
+
+export async function startSession(): Promise<PlanSnapshot> {
   const res = await fetch(`${API_BASE}/start`, { method: "POST" });
   return res.json();
 }
 
-export async function sendMessage(message: string): Promise<{
-  speech: string;
-  plan?: Plan | null;
-  taskPlan?: TaskStep[];
-}> {
+export async function sendMessage(
+  message: string,
+  signal?: AbortSignal
+): Promise<PlanSnapshot> {
   const res = await fetch(`${API_BASE}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message }),
+    signal,
   });
   return res.json();
 }
 
-export async function getPlan(): Promise<{ plan: Plan | null; taskPlan: TaskStep[] }> {
+export async function getPlan(): Promise<PlanSnapshot> {
   const res = await fetch(`${API_BASE}/plan`);
   return res.json();
 }
@@ -41,6 +47,12 @@ export async function getTTS(text: string): Promise<ArrayBuffer> {
   return res.arrayBuffer();
 }
 
+export async function getDeepgramKey(): Promise<string> {
+  const res = await fetch(`${API_BASE}/deepgram-key`);
+  const data = (await res.json()) as { key?: string };
+  return data.key || "";
+}
+
 export interface Plan {
   name: string;
   world: string;
@@ -55,7 +67,7 @@ export interface Plan {
 export interface TaskStep {
   id: string;
   label: string;
-  status: "pending" | "active" | "done";
+  status: "pending" | "upcoming" | "active" | "done";
   progress: number;
   detail: string;
 }

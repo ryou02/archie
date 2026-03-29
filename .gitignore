@@ -9,7 +9,7 @@ sourcemap.json
 
 
 # Environment variables
-web/.env
+frontend/.env
 
 # Claude/AI files
 .claude/
@@ -18,7 +18,7 @@ CLAUDE.md
 .worktrees/
 
 # Node
-web/node_modules/
+frontend/node_modules/
 
 # Screenshots
-web/temporary screenshots/
+frontend/temporary screenshots/
