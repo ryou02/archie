@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
+import AmbientBackground from "@/components/AmbientBackground";
 import ChatPanel from "@/components/ChatPanel";
 import ProgressBar from "@/components/ProgressBar";
 import StatusDot from "@/components/StatusDot";
@@ -195,44 +197,22 @@ export default function BuildPage() {
 
   return (
     <div className="relative h-screen overflow-hidden">
-      <div className="aurora-bg" />
-      <div className="aurora-streaks" />
-      <div className="stars" />
+      <AmbientBackground surface="build" />
 
       <header
-        className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-6 py-3"
-        style={{
-          background: "linear-gradient(180deg, rgba(5,8,16,0.7) 0%, transparent 100%)",
-        }}
+        className="workspace-header glass-shell glass-shell--quiet absolute left-3 right-3 top-3 z-20 flex items-center justify-between px-4 py-3 sm:left-4 sm:right-4 sm:px-6"
       >
         <div className="flex items-center gap-3">
-          <div
-            className="w-7 h-7 flex items-center justify-center"
-            style={{
-              background: "rgba(61,245,167,0.12)",
-              border: "1px solid rgba(61,245,167,0.20)",
-            }}
-          >
-            <span
-              className="text-xs font-black"
-              style={{
-                fontFamily: "var(--font-display)",
-                color: "var(--aurora-green)",
-              }}
-            >
-              A
-            </span>
+          <div className="workspace-mark">
+            <Image
+              src="/logo-mark.png"
+              alt="Archie mark"
+              className="workspace-mark__image"
+              width={250}
+              height={250}
+              priority
+            />
           </div>
-          <span
-            className="text-sm font-semibold tracking-wide"
-            style={{
-              fontFamily: "var(--font-display)",
-              color: "var(--text-primary)",
-              letterSpacing: "0.08em",
-            }}
-          >
-            ARCHIE
-          </span>
         </div>
 
         {tasks.length > 0 ? (
@@ -241,7 +221,7 @@ export default function BuildPage() {
               <ProgressBar percent={overallProgress} />
               <span
                 className="text-xs font-mono font-bold shrink-0"
-                style={{ color: "var(--aurora-green)" }}
+                style={{ color: "var(--ambient-edge-bright)" }}
               >
                 {overallProgress}%
               </span>
@@ -256,7 +236,7 @@ export default function BuildPage() {
 
       {tasks.length > 0 && (
         <div
-          className="absolute top-14 left-4 z-20 w-64 game-panel p-4 overflow-y-auto"
+          className="workspace-panel glass-shell glass-shell--panel absolute left-4 top-18 z-20 hidden w-64 overflow-y-auto p-4 lg:block"
           style={{ maxHeight: "50vh" }}
         >
           <div className="flex items-center justify-between mb-3">
@@ -269,7 +249,7 @@ export default function BuildPage() {
                     ? "rgba(61,245,167,0.12)"
                     : plan?.status === "building"
                       ? "rgba(74,158,255,0.12)"
-                      : "var(--surface2)",
+                      : "rgba(255,255,255,0.06)",
                 color:
                   plan?.status === "complete"
                     ? "var(--aurora-green)"
@@ -335,7 +315,7 @@ export default function BuildPage() {
       )}
 
       {plan && plan.status === "waiting_approval" && (
-        <div className="absolute bottom-6 left-6 z-20 game-panel p-5 max-w-md">
+        <div className="workspace-summary glass-shell glass-shell--panel absolute bottom-6 left-4 z-20 hidden max-w-md p-5 xl:block">
           <h3
             className="font-bold text-base mb-3"
             style={{
@@ -382,18 +362,7 @@ export default function BuildPage() {
         </div>
       )}
 
-      <div
-        className="absolute right-4 z-20 flex flex-col"
-        style={{
-          top: "10%",
-          height: "80%",
-          width: "360px",
-          background: "var(--panel-bg)",
-          backdropFilter: "blur(20px) saturate(1.2)",
-          WebkitBackdropFilter: "blur(20px) saturate(1.2)",
-          border: "1px solid var(--panel-border)",
-        }}
-      >
+      <div className="workspace-chat glass-shell glass-shell--chat z-20 flex flex-col">
         <ChatPanel
           history={history}
           activeSession={activeSession}

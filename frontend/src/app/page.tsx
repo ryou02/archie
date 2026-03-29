@@ -1,117 +1,45 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
+import AmbientBackground from "@/components/AmbientBackground";
 
 export default function Home() {
   const router = useRouter();
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center relative min-h-screen overflow-hidden">
-      {/* Aurora background */}
-      <div className="aurora-bg" />
-      <div className="aurora-streaks" />
-      <div className="stars" />
+    <div className="landing-page relative flex min-h-screen flex-1 items-center justify-center overflow-hidden px-6 py-16">
+      <AmbientBackground surface="landing" />
 
-      {/* Ground / horizon glow */}
-      <div
-        className="fixed bottom-0 left-0 right-0 h-[50vh] pointer-events-none z-[1]"
-        style={{
-          background:
-            "radial-gradient(ellipse 100% 40% at 50% 100%, rgba(61,245,167,0.06) 0%, transparent 60%), radial-gradient(ellipse 60% 30% at 50% 100%, rgba(74,158,255,0.04) 0%, transparent 50%)",
-        }}
-      />
-
-      {/* Content */}
-      <div className="relative z-10 flex flex-col items-center gap-8 text-center px-6">
-        {/* Logo mark */}
-        <div className="relative">
-          <div
-            className="w-20 h-20 rounded-2xl flex items-center justify-center"
-            style={{
-              background:
-                "linear-gradient(135deg, rgba(61,245,167,0.18), rgba(74,158,255,0.12))",
-              border: "1px solid rgba(61,245,167,0.25)",
-              boxShadow: "0 0 50px rgba(61,245,167,0.12), 0 0 100px rgba(61,245,167,0.05)",
-            }}
-          >
-            <span
-              className="text-3xl font-black"
-              style={{
-                fontFamily: "var(--font-display)",
-                background: "linear-gradient(135deg, var(--aurora-green), var(--aurora-teal))",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
-              A
-            </span>
-          </div>
-          {/* Glow behind logo */}
-          <div
-            className="absolute -inset-4 rounded-3xl -z-10"
-            style={{
-              background: "radial-gradient(circle, rgba(61,245,167,0.08) 0%, transparent 70%)",
-            }}
+      <div className="landing-shell relative z-10 mx-auto flex w-full max-w-5xl flex-col items-center text-center">
+        <div className="hero-mark">
+          <Image
+            src="/logo-mark.png"
+            alt="Archie mark"
+            className="hero-mark__image"
+            width={250}
+            height={250}
+            priority
           />
         </div>
 
-        {/* Title */}
-        <div className="flex flex-col items-center gap-4">
-          <h1
-            className="text-7xl font-black tracking-tight"
-            style={{
-              fontFamily: "var(--font-display)",
-              letterSpacing: "-0.04em",
-              background:
-                "linear-gradient(160deg, #ffffff 0%, rgba(232,236,244,0.85) 40%, var(--aurora-green) 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              textShadow: "0 0 60px rgba(61,245,167,0.15)",
-            }}
-          >
-            ARCHIE
-          </h1>
-          <p
-            className="text-lg font-light tracking-wide"
-            style={{
-              fontFamily: "var(--font-body)",
-              color: "var(--text-secondary)",
-              letterSpacing: "0.08em",
-            }}
-          >
-            Build Roblox games with your voice
+        <div className="hero-copy-wrap">
+          <p className="hero-kicker">Made for imaginative Roblox builders</p>
+          <h1 className="hero-title">ARCHIE</h1>
+          <p className="hero-copy">
+            Describe the game, shape the <span className="editorial-accent">vibe</span>,
+            and let Archie help creators turn ideas into playable Roblox worlds.
           </p>
         </div>
 
-        {/* CTA */}
         <button
           onClick={() => router.push("/build")}
-          className="btn-primary mt-6 text-base px-12 py-4"
-          style={{
-            boxShadow: "0 0 30px rgba(61,245,167,0.12), 0 4px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)",
-          }}
+          className="btn-primary mt-8 text-base"
         >
           Start Building
         </button>
-      </div>
 
-      {/* Model silhouette area */}
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 z-[2] pointer-events-none">
-        <div
-          className="w-[300px] h-[400px] relative"
-          style={{
-            background: "radial-gradient(ellipse 60% 80% at 50% 60%, rgba(61,245,167,0.04) 0%, transparent 70%)",
-          }}
-        >
-          {/* Subtle ground reflection */}
-          <div
-            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[200px] h-[3px] rounded-full"
-            style={{
-              background: "radial-gradient(ellipse, rgba(61,245,167,0.20) 0%, transparent 70%)",
-              boxShadow: "0 0 20px rgba(61,245,167,0.08)",
-            }}
-          />
-        </div>
+        <div className="landing-floor" />
       </div>
     </div>
   );

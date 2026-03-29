@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useSyncExternalStore } from "react";
 import BuildSessionCard from "@/components/BuildSessionCard";
 import type { BuildSession, ChatHistoryItem } from "@/lib/build-history";
 
@@ -39,6 +39,14 @@ export default function ChatPanel({
     }
   }, [activeSession, disabled, history]);
 
+  const hydrated = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+
+  const effectiveMicSupported = hydrated && micSupported;
+
   const updateStickiness = () => {
     if (!scrollRef.current) {
       return;
@@ -60,7 +68,7 @@ export default function ChatPanel({
 
   const handleMicStart = (event: React.PointerEvent<HTMLButtonElement>) => {
     event.preventDefault();
-    if (disabled || !micSupported) {
+    if (disabled || !effectiveMicSupported) {
       return;
     }
     onMicStart?.();
@@ -72,20 +80,15 @@ export default function ChatPanel({
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div
-        className="px-5 py-3 shrink-0"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
-      >
+    <div className="chat-panel flex h-full flex-col">
+      <div className="chat-panel__header shrink-0 px-5 py-3">
         <span className="nav-label">Chat</span>
       </div>
 
-      {/* Messages */}
       <div
         ref={scrollRef}
         onScroll={updateStickiness}
-        className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3"
+        className="chat-panel__messages flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4"
         style={{ overscrollBehavior: "contain" }}
       >
         {history.map((item, index) =>
@@ -99,23 +102,11 @@ export default function ChatPanel({
           ) : (
             <div
               key={`${item.role}-${index}`}
-              className={`max-w-[90%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                item.role === "user" ? "self-end" : "self-start"
+              className={`chat-bubble max-w-[90%] px-4 py-3 text-sm leading-relaxed ${
+                item.role === "user"
+                  ? "chat-bubble--user self-end"
+                  : "chat-bubble--assistant self-start"
               }`}
-              style={{
-                background:
-                  item.role === "user"
-                    ? "rgba(74,158,255,0.12)"
-                    : "var(--surface)",
-                border: `1px solid ${
-                  item.role === "user"
-                    ? "rgba(74,158,255,0.18)"
-                    : "rgba(255,255,255,0.04)"
-                }`,
-                color: "var(--text-primary)",
-                whiteSpace: "pre-wrap",
-                fontFamily: "var(--font-body)",
-              }}
             >
               {item.content}
             </div>
@@ -128,12 +119,7 @@ export default function ChatPanel({
 
         {disabled && (
           <div
-            className="self-start flex items-center gap-2.5 px-4 py-3 rounded-2xl text-sm"
-            style={{
-              background: "var(--surface)",
-              border: "1px solid rgba(255,255,255,0.04)",
-              color: "var(--text-secondary)",
-            }}
+            className="chat-bubble chat-bubble--status self-start flex items-center gap-2.5 px-4 py-3 text-sm"
           >
             <div className="flex items-center gap-1">
               <div className="typing-dot" />
@@ -147,11 +133,7 @@ export default function ChatPanel({
         )}
       </div>
 
-      {/* Input */}
-      <div
-        className="px-4 pb-4 pt-3 flex gap-2"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
-      >
+      <div className="chat-panel__composer flex gap-2 px-4 pb-4 pt-3">
         <input
           type="text"
           value={input}
@@ -159,13 +141,7 @@ export default function ChatPanel({
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
           placeholder="Tell Archie what to build..."
           disabled={disabled}
-          className="flex-1 px-4 py-3 rounded-full text-sm outline-none"
-          style={{
-            background: "var(--surface2)",
-            border: "1px solid var(--glass-border)",
-            color: "var(--text-primary)",
-            fontFamily: "var(--font-body)",
-          }}
+          className="chat-input flex-1 rounded-full px-4 py-3 text-sm outline-none"
         />
         <button
           onClick={handleSubmit}
@@ -176,7 +152,7 @@ export default function ChatPanel({
         </button>
         <button
           type="button"
-          disabled={disabled || !micSupported}
+          disabled={disabled || !effectiveMicSupported}
           className={`btn-mic ${micState !== "idle" ? "btn-mic--active" : ""}`}
           onPointerDown={handleMicStart}
           onPointerUp={handleMicStop}
@@ -184,14 +160,20 @@ export default function ChatPanel({
           onPointerCancel={handleMicStop}
           aria-label="Hold to talk"
           title={
-            micSupported
+            effectiveMicSupported
               ? micState === "recording"
                 ? "Release to send"
                 : "Hold to talk"
               : "Voice input unavailable"
           }
         >
-          {micState === "recording" ? "Rec" : micState === "connecting" ? "..." : "Mic"}
+          {effectiveMicSupported
+            ? micState === "recording"
+              ? "Rec"
+              : micState === "connecting"
+                ? "..."
+                : "Mic"
+            : "Mic"}
         </button>
       </div>
     </div>

@@ -23,10 +23,10 @@ export default function TaskList({ tasks, onSelect, selectedId }: TaskListProps)
             className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-left cursor-pointer"
             style={{
               background: isSelected
-                ? "rgba(61,245,167,0.08)"
-                : "var(--surface)",
+                ? "rgba(244,248,255,0.10)"
+                : "rgba(255,255,255,0.04)",
               border: `1px solid ${
-                isSelected ? "rgba(61,245,167,0.15)" : "transparent"
+                isSelected ? "rgba(238,246,255,0.18)" : "transparent"
               }`,
               transition: "background var(--t-fast), border-color var(--t-fast)",
             }}
@@ -36,14 +36,14 @@ export default function TaskList({ tasks, onSelect, selectedId }: TaskListProps)
                 className="w-2 h-2 rounded-full shrink-0"
                 style={{
                   background: isDone
-                    ? "var(--aurora-green)"
+                    ? "var(--ambient-edge-bright)"
                     : isActive
-                    ? "var(--aurora-blue)"
+                    ? "rgba(184,226,255,0.92)"
                     : "var(--surface3)",
                   boxShadow: isDone
-                    ? "0 0 6px rgba(61,245,167,0.3)"
+                    ? "0 0 6px rgba(238,246,255,0.25)"
                     : isActive
-                    ? "0 0 6px rgba(74,158,255,0.3)"
+                    ? "0 0 6px rgba(184,226,255,0.22)"
                     : "none",
                 }}
               />
@@ -74,9 +74,9 @@ export default function TaskList({ tasks, onSelect, selectedId }: TaskListProps)
                 className="text-[10px] font-mono font-bold w-7 text-right"
                 style={{
                   color: isDone
-                    ? "var(--aurora-green)"
+                    ? "var(--ambient-edge-bright)"
                     : isActive
-                    ? "var(--aurora-blue)"
+                    ? "rgba(184,226,255,0.92)"
                     : "var(--text-muted)",
                 }}
               >

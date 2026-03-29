@@ -25,8 +25,8 @@ export default function StatusDot() {
       <div
         className="w-2 h-2 rounded-full"
         style={{
-          background: connected ? "var(--aurora-green)" : "var(--text-muted)",
-          boxShadow: connected ? "0 0 8px rgba(61,245,167,0.4)" : "none",
+          background: connected ? "var(--ambient-edge-bright)" : "var(--text-muted)",
+          boxShadow: connected ? "0 0 8px rgba(238,246,255,0.28)" : "none",
         }}
       />
       <span className="nav-label">
