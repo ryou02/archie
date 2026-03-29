@@ -31,6 +31,23 @@ npm run dev
 
 ## Setup Instructions
 
+### Roblox Studio Security
+
+If you want the Archie Studio plugin to talk to this local server, Roblox Studio must allow HTTP requests for the place you have open.
+
+1. Open your place in Roblox Studio.
+2. Go to `File > Game Settings > Security`.
+3. Turn on `Allow HTTP Requests`.
+4. Save the setting, then make sure this frontend is still running on `http://localhost:3000`.
+
+If `Allow HTTP Requests` is off, the plugin cannot poll the local Archie server and the app will stay in the `Studio Offline` state.
+
+For unpublished places, you can also enable it from the Command Bar:
+
+```lua
+game:GetService("HttpService").HttpEnabled = true
+```
+
 ### Dependencies
 
 Main runtime dependencies are installed through `npm install`. The project uses:
