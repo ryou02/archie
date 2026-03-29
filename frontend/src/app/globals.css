@@ -351,6 +351,7 @@ body {
   height: 100%;
   overflow: hidden;
   isolation: isolate;
+  animation: fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
 }
 
 .workspace-avatar__canvas {
@@ -370,6 +371,11 @@ body {
   height: 100%;
   max-width: 100%;
   overflow: hidden;
+  animation: fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+}
+
+.chat-panel {
+  animation: fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
 }
 
 .chat-panel__meta,
