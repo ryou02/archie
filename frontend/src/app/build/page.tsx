@@ -200,7 +200,7 @@ export default function BuildPage() {
       <AmbientBackground surface="build" />
 
       <header
-        className="workspace-header glass-shell glass-shell--quiet absolute left-3 right-3 top-3 z-20 flex items-center justify-between px-4 py-3 sm:left-4 sm:right-4 sm:px-6"
+        className="workspace-header glass-shell glass-shell--quiet absolute top-3 z-20 flex items-center justify-between px-4 py-3 sm:px-6"
       >
         <div className="flex items-center gap-3">
           <div className="workspace-mark">
@@ -216,7 +216,7 @@ export default function BuildPage() {
         </div>
 
         {tasks.length > 0 ? (
-          <div className="flex-1 max-w-xs mx-8">
+          <div className="flex-1 min-w-0 max-w-xs mx-4 sm:mx-8">
             <div className="flex items-center gap-3">
               <ProgressBar percent={overallProgress} />
               <span

@@ -21,7 +21,7 @@ export default function StatusDot() {
   }, []);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="shrink-0 flex items-center gap-2">
       <div
         className="w-2 h-2 rounded-full"
         style={{
@@ -29,7 +29,7 @@ export default function StatusDot() {
           boxShadow: connected ? "0 0 8px rgba(238,246,255,0.28)" : "none",
         }}
       />
-      <span className="nav-label">
+      <span className="nav-label hidden sm:inline">
         {connected ? "Studio Connected" : "Studio Offline"}
       </span>
     </div>
