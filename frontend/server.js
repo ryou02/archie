@@ -323,7 +323,208 @@ Gameplay: Explore the house with a flashlight, jumpscares when you enter rooms
 Audio: Spooky ambient wind, creaking doors, jumpscare sound effects
 
 Sound good? Say go and I'll start building!"
-</example>`;
+</example>
+
+GAME TEMPLATES — when the user asks for one of these game types, follow the EXACT build sequence below instead of improvising. This ensures a working game every time.
+
+<template name="gun-game">
+TRIGGER: User asks for a gun game, FPS, shooter, gun fight, or anything involving guns/shooting.
+
+PLAN TO PRESENT:
+"Gun Game
+
+World: Military arena, daytime, open field with some cover
+Objects: Arena walls, crates for cover
+Characters: Target dummy to shoot at
+Gameplay: Pick from 3 guns using a GUI, shoot the dummy
+Audio: Gunshot sounds from the gun tools
+
+Sound good? Say go and I'll start building!"
+
+BUILD SEQUENCE — follow this exactly:
+
+STEP A: Environment
+1. set_lighting with ClockTime 14, Brightness 2, OutdoorAmbient "128,128,128"
+2. set_atmosphere with Density 0.15, Color "200,210,220"
+
+STEP B: Arena
+3. run_code to build the arena floor, walls, and cover crates:
+run_code:
+local floor = Instance.new("Part")
+floor.Name = "ArenaFloor"
+floor.Size = Vector3.new(200, 1, 200)
+floor.Position = Vector3.new(0, 0.5, 0)
+floor.Anchored = true
+floor.Material = Enum.Material.Concrete
+floor.Color = Color3.fromRGB(120, 120, 120)
+floor.Parent = workspace
+
+for i, data in ipairs({
+  {name="WallNorth", size=Vector3.new(200,20,4), pos=Vector3.new(0,10,102)},
+  {name="WallSouth", size=Vector3.new(200,20,4), pos=Vector3.new(0,10,-102)},
+  {name="WallEast", size=Vector3.new(4,20,200), pos=Vector3.new(102,10,0)},
+  {name="WallWest", size=Vector3.new(4,20,200), pos=Vector3.new(-102,10,0)},
+}) do
+  local w = Instance.new("Part")
+  w.Name = data.name
+  w.Size = data.size
+  w.Position = data.pos
+  w.Anchored = true
+  w.Material = Enum.Material.Concrete
+  w.Color = Color3.fromRGB(80, 80, 80)
+  w.Parent = workspace
+end
+
+for i = 1, 6 do
+  local crate = Instance.new("Part")
+  crate.Name = "Crate" .. i
+  crate.Size = Vector3.new(6, 6, 6)
+  crate.Position = Vector3.new(math.random(-60, 60), 3, math.random(-60, 60))
+  crate.Anchored = true
+  crate.Material = Enum.Material.WoodPlanks
+  crate.Color = Color3.fromRGB(139, 90, 43)
+  crate.Parent = workspace
+end
+
+STEP C: Search and insert 3 gun Tools from the toolbox
+These are actual Roblox Tool objects with pre-built shooting scripts.
+4. search_toolbox for "pistol tool" — insert_asset the best gun Tool result, then use run_code to move it into ReplicatedStorage and rename it "Pistol"
+5. search_toolbox for "shotgun tool" — insert_asset the best gun Tool result, then use run_code to move it into ReplicatedStorage and rename it "Shotgun"
+6. search_toolbox for "sniper tool" or "sniper rifle" — insert_asset the best gun Tool result, then use run_code to move it into ReplicatedStorage and rename it "Sniper"
+
+After each insert, use get_children to verify the Tool was inserted, then run_code to move it:
+run_code: local tool = workspace:FindFirstChild("INSERTED_NAME"); if tool then tool.Name = "NEW_NAME"; tool.Parent = game.ReplicatedStorage end
+
+STEP D: Target Dummy
+7. search_toolbox for "target dummy" or "combat dummy" — insert_asset and position at 0, 3, -40
+   If no good result, build one with run_code:
+run_code:
+local dummy = Instance.new("Model")
+dummy.Name = "TargetDummy"
+local torso = Instance.new("Part")
+torso.Name = "HumanoidRootPart"
+torso.Size = Vector3.new(4, 5, 2)
+torso.Position = Vector3.new(0, 4.5, -40)
+torso.Anchored = true
+torso.Material = Enum.Material.SmoothPlastic
+torso.Color = Color3.fromRGB(200, 50, 50)
+torso.Parent = dummy
+local head = Instance.new("Part")
+head.Name = "Head"
+head.Shape = Enum.PartType.Ball
+head.Size = Vector3.new(3, 3, 3)
+head.Position = Vector3.new(0, 8, -40)
+head.Anchored = true
+head.Material = Enum.Material.SmoothPlastic
+head.Color = Color3.fromRGB(200, 50, 50)
+head.Parent = dummy
+local humanoid = Instance.new("Humanoid")
+humanoid.MaxHealth = 100
+humanoid.Health = 100
+humanoid.Parent = dummy
+dummy.PrimaryPart = torso
+dummy.Parent = workspace
+
+STEP E: Gun Selection GUI
+8. run_code to build the gun select GUI in StarterGui:
+run_code:
+local sg = game.StarterGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "GunSelectGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = sg
+
+local frame = Instance.new("Frame")
+frame.Name = "GunFrame"
+frame.Size = UDim2.new(0, 360, 0, 70)
+frame.Position = UDim2.new(0.5, -180, 1, -90)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.BackgroundTransparency = 0.3
+frame.BorderSizePixel = 0
+frame.Parent = screenGui
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+
+local layout = Instance.new("UIListLayout")
+layout.FillDirection = Enum.FillDirection.Horizontal
+layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+layout.VerticalAlignment = Enum.VerticalAlignment.Center
+layout.Padding = UDim.new(0, 12)
+layout.Parent = frame
+
+local guns = {
+  {name="Pistol", color=Color3.fromRGB(80, 160, 255)},
+  {name="Shotgun", color=Color3.fromRGB(255, 140, 40)},
+  {name="Sniper", color=Color3.fromRGB(255, 60, 60)},
+}
+for _, g in ipairs(guns) do
+  local btn = Instance.new("TextButton")
+  btn.Name = g.name .. "Btn"
+  btn.Size = UDim2.new(0, 100, 0, 50)
+  btn.BackgroundColor3 = g.color
+  btn.Text = g.name
+  btn.TextColor3 = Color3.new(1,1,1)
+  btn.Font = Enum.Font.GothamBold
+  btn.TextSize = 16
+  btn.BorderSizePixel = 0
+  btn.Parent = frame
+  Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+end
+
+9. create_script — LocalScript in the ScreenGui named "GunSelector":
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+local gui = script.Parent
+local gunFrame = gui:WaitForChild("GunFrame")
+
+local function equipGun(gunName)
+  local character = player.Character
+  if not character then return end
+  local backpack = player.Backpack
+  -- Remove current tools
+  for _, tool in ipairs(backpack:GetChildren()) do
+    if tool:IsA("Tool") then tool:Destroy() end
+  end
+  for _, tool in ipairs(character:GetChildren()) do
+    if tool:IsA("Tool") then tool:Destroy() end
+  end
+  -- Clone and give new gun
+  local gunTemplate = ReplicatedStorage:FindFirstChild(gunName)
+  if gunTemplate and gunTemplate:IsA("Tool") then
+    local clone = gunTemplate:Clone()
+    clone.Parent = backpack
+    -- Auto-equip
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then humanoid:EquipTool(clone) end
+  end
+end
+
+for _, btn in ipairs(gunFrame:GetChildren()) do
+  if btn:IsA("TextButton") then
+    btn.MouseButton1Click:Connect(function()
+      equipGun(btn.Text)
+    end)
+  end
+end
+
+-- Equip pistol by default
+task.defer(function()
+  player.CharacterAdded:Wait()
+  task.wait(1)
+  equipGun("Pistol")
+end)
+if player.Character then
+  task.defer(function() task.wait(1); equipGun("Pistol") end)
+end
+
+STEP F: Playtest & Verify
+10. start_playtest
+11. get_console_output — check for errors, fix any
+12. stop_playtest
+
+STEP G: Done
+"Your gun game is ready! Click the buttons at the bottom to switch between Pistol, Shotgun, and Sniper. Shoot the target dummy! Want me to add anything else?"
+</template>`;
 
 let conversationHistory = [];
 
@@ -436,7 +637,7 @@ async function agentLoop(userMessage) {
       });
 
       const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-opus-4-6",
         max_tokens: 8192,
         system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
         tools: cachedTools,
