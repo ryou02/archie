@@ -1,7 +1,13 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { buildTaskPlan, parsePlanFromSpeech } = require("../task-plan.js");
+const {
+  advanceTaskPlan,
+  buildTaskPlan,
+  deriveOverallProgress,
+  finalizeTaskPlan,
+  parsePlanFromSpeech,
+} = require("../task-plan.js");
 
 test("parsePlanFromSpeech extracts the structured plan from Archie response text", () => {
   const speech = `Alright here's what I'm thinking!
@@ -84,4 +90,42 @@ test("buildTaskPlan omits optional sections when they are not needed", () => {
     steps.map((step) => step.id),
     ["review-plan", "build-world", "place-objects", "script-gameplay"]
   );
+});
+
+test("advanceTaskPlan activates the matching task bucket for a tool call", () => {
+  const taskPlan = buildTaskPlan({
+    name: "Stadium Runner",
+    world: "Bright daytime stadium",
+    objects: "Stadium structure and oval running track",
+    characters: "None needed",
+    animations: "None needed",
+    gameplay: "Run laps around the track",
+    audio: "Crowd ambience and whistle sounds",
+  });
+
+  const next = advanceTaskPlan(taskPlan, "search_toolbox", {
+    query: "stadium",
+  });
+
+  assert.equal(next[0].status, "done");
+  assert.equal(next[0].progress, 100);
+  assert.equal(next[2].status, "active");
+  assert.equal(next[2].progress, 20);
+  assert.match(next[2].detail, /stadium/i);
+});
+
+test("finalizeTaskPlan marks all tasks complete and deriveOverallProgress returns 100", () => {
+  const taskPlan = finalizeTaskPlan([
+    { id: "a", progress: 24, status: "active", detail: "placing stadium" },
+    { id: "b", progress: 0, status: "upcoming", detail: "creating script" },
+  ]);
+
+  assert.deepEqual(
+    taskPlan.map((step) => [step.id, step.status, step.progress]),
+    [
+      ["a", "done", 100],
+      ["b", "done", 100],
+    ]
+  );
+  assert.equal(deriveOverallProgress(taskPlan), 100);
 });

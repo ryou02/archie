@@ -3,6 +3,11 @@ const express = require("express");
 const cors = require("cors");
 const Anthropic = require("@anthropic-ai/sdk");
 const { TOOL_DEFINITIONS } = require("./tools.js");
+const {
+  createBuildSession,
+  finalizeBuildSession,
+  syncBuildSession,
+} = require("./build-session.js");
 const { buildTaskPlan, parsePlanFromSpeech } = require("./task-plan.js");
 
 const anthropic = new Anthropic();
@@ -448,12 +453,16 @@ app.get("/status", (req, res) => {
 // --- Game Plan State ---
 let currentPlan = null; // { name, world, objects, gameplay, audio, status }
 let currentTaskPlan = [];
+let activeBuildSession = null;
+let archivedBuildSessions = [];
 
 // Start endpoint — Archie greets the user
 app.post("/start", async (req, res) => {
   conversationHistory = [];
   currentPlan = null;
   currentTaskPlan = [];
+  activeBuildSession = null;
+  archivedBuildSessions = [];
   try {
     const result = await agentLoop("Hi! I just opened Roblox Studio and I want to make a game.");
     res.json(result);
@@ -465,7 +474,12 @@ app.post("/start", async (req, res) => {
 
 // Get current plan
 app.get("/plan", (req, res) => {
-  res.json({ plan: currentPlan, taskPlan: currentTaskPlan });
+  res.json({
+    plan: currentPlan,
+    taskPlan: currentTaskPlan,
+    activeBuildSession,
+    archivedBuildSessions,
+  });
 });
 
 // Reset conversation history
@@ -473,6 +487,8 @@ app.post("/reset", (req, res) => {
   conversationHistory = [];
   currentPlan = null;
   currentTaskPlan = [];
+  activeBuildSession = null;
+  archivedBuildSessions = [];
   res.json({ success: true });
 });
 
@@ -484,6 +500,29 @@ async function agentLoop(userMessage) {
   const MAX_ITERATIONS = 15;
   let iterations = 0;
   let hasCalledSearchToolbox = false;
+  let usedToolsThisTurn = false;
+
+  function syncPlanFromSpeech(speech) {
+    const parsedPlan = parsePlanFromSpeech(speech);
+    if (!parsedPlan) {
+      return;
+    }
+
+    currentPlan = parsedPlan;
+    currentTaskPlan = buildTaskPlan(parsedPlan);
+    console.log("[plan] Saved plan:", currentPlan.name);
+  }
+
+  function archiveActiveSession(status) {
+    if (!activeBuildSession) {
+      return;
+    }
+
+    const finishedSession = finalizeBuildSession(activeBuildSession, status);
+    activeBuildSession = null;
+    archivedBuildSessions = [...archivedBuildSessions, finishedSession];
+    currentTaskPlan = finishedSession.tasks;
+  }
 
   try {
     while (iterations < MAX_ITERATIONS) {
@@ -559,28 +598,49 @@ async function agentLoop(userMessage) {
       // Append assistant response to history
       conversationHistory.push({ role: "assistant", content: response.content });
 
+      const assistantSpeech = response.content
+        .filter((block) => block.type === "text")
+        .map((block) => block.text)
+        .join("\n")
+        .trim();
+
+      if (assistantSpeech) {
+        syncPlanFromSpeech(assistantSpeech);
+      }
+
       // If Claude is done talking, extract speech and return
       if (response.stop_reason === "end_turn") {
         const textBlock = response.content.find((b) => b.type === "text");
         const speech = textBlock ? textBlock.text : "Done!";
 
-        const parsedPlan = parsePlanFromSpeech(speech);
-        if (parsedPlan) {
-          currentPlan = parsedPlan;
-          currentTaskPlan = buildTaskPlan(parsedPlan);
-          console.log("[plan] Saved plan:", currentPlan.name);
-        }
-
         // Update plan status when building starts
-        if (currentPlan && currentPlan.status === "waiting_approval" && iterations > 1) {
+        if (usedToolsThisTurn) {
+          if (currentPlan) {
+            currentPlan.status = "complete";
+          }
+          archiveActiveSession("complete");
+        } else if (currentPlan && currentPlan.status === "waiting_approval" && iterations > 1) {
           currentPlan.status = "building";
         }
 
-        return { speech, plan: currentPlan, taskPlan: currentTaskPlan };
+        return {
+          speech,
+          plan: currentPlan,
+          taskPlan: currentTaskPlan,
+          activeBuildSession,
+          archivedBuildSessions,
+        };
       }
 
       // If Claude wants to use tools, execute them
       if (response.stop_reason === "tool_use") {
+        usedToolsThisTurn = true;
+        if (!activeBuildSession && currentPlan) {
+          currentPlan.status = "building";
+          activeBuildSession = createBuildSession(currentPlan);
+          currentTaskPlan = activeBuildSession.tasks;
+        }
+
         const toolResults = [];
         for (const block of response.content) {
           if (block.type === "tool_use") {
@@ -607,10 +667,18 @@ async function agentLoop(userMessage) {
             if (currentPlan && currentPlan.status === "waiting_approval") {
               currentPlan.status = "building";
               console.log("[plan] Building started");
+              if (!activeBuildSession) {
+                activeBuildSession = createBuildSession(currentPlan);
+                currentTaskPlan = activeBuildSession.tasks;
+              }
             }
 
             // Route all tools to plugin
             const result = await executeToolViaPlugin(block.name, block.input);
+            if (activeBuildSession) {
+              activeBuildSession = syncBuildSession(activeBuildSession, block.name, block.input);
+              currentTaskPlan = activeBuildSession.tasks;
+            }
             console.log(`[tool] ${block.name}(${JSON.stringify(block.input).slice(0, 100)}) → ${JSON.stringify(result).slice(0, 300)}`);
             toolResults.push({
               type: "tool_result",
@@ -624,14 +692,21 @@ async function agentLoop(userMessage) {
     }
 
     if (currentPlan) currentPlan.status = "complete";
+    archiveActiveSession("complete");
     return {
       speech: "Whew, that was a lot! Let me know what's next.",
       plan: currentPlan,
       taskPlan: currentTaskPlan,
+      activeBuildSession,
+      archivedBuildSessions,
     };
   } catch (err) {
     // Roll back conversation history to prevent corrupted state
     conversationHistory.length = historyLengthBefore;
+    if (currentPlan) {
+      currentPlan.status = "failed";
+    }
+    archiveActiveSession("failed");
     throw err;
   }
 }

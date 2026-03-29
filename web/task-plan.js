@@ -152,7 +152,132 @@ function buildTaskPlan(plan) {
   return steps;
 }
 
+function deriveOverallProgress(taskPlan) {
+  if (!taskPlan || taskPlan.length === 0) {
+    return 0;
+  }
+
+  return taskPlan.reduce((sum, step) => sum + (step.progress || 0), 0) / taskPlan.length;
+}
+
+function markDone(step, detail) {
+  return {
+    ...step,
+    status: "done",
+    progress: 100,
+    detail: detail || step.detail,
+  };
+}
+
+function markActive(step, progress, detail) {
+  return {
+    ...step,
+    status: "active",
+    progress: Math.max(step.progress || 0, progress),
+    detail: detail || step.detail,
+  };
+}
+
+function toolTargets(toolName, params = {}) {
+  const query = `${params.query || ""}`.toLowerCase();
+
+  if (toolName === "set_lighting" || toolName === "set_atmosphere" || toolName === "modify_terrain") {
+    return { stepId: "build-world", progress: 28, detail: "Shaping the environment." };
+  }
+
+  if (toolName === "search_toolbox") {
+    if (/(sound|music|audio|ambient)/.test(query)) {
+      return {
+        stepId: "mix-audio",
+        progress: 28,
+        detail: `Searching for ${params.query || "audio"} assets.`,
+      };
+    }
+
+    if (/(character|npc|enemy|ghost|zombie|monster|animal|animation)/.test(query)) {
+      return {
+        stepId: "add-characters",
+        progress: 28,
+        detail: `Searching for ${params.query || "character"} assets.`,
+      };
+    }
+
+    return {
+      stepId: "place-objects",
+      progress: 20,
+      detail: `Searching for ${params.query || "build"} assets.`,
+    };
+  }
+
+  if (toolName === "insert_asset" || toolName === "get_properties" || toolName === "set_properties") {
+    return {
+      stepId: "place-objects",
+      progress: 55,
+      detail: "Placing and adjusting scene assets.",
+    };
+  }
+
+  if (
+    toolName === "create_script" ||
+    toolName === "run_code" ||
+    toolName === "find_instances" ||
+    toolName === "create_instance"
+  ) {
+    return {
+      stepId: "script-gameplay",
+      progress: 62,
+      detail: "Wiring gameplay systems.",
+    };
+  }
+
+  if (
+    toolName === "start_playtest" ||
+    toolName === "get_console_output" ||
+    toolName === "stop_playtest"
+  ) {
+    return {
+      stepId: "script-gameplay",
+      progress: 88,
+      detail: "Testing the game flow.",
+    };
+  }
+
+  return null;
+}
+
+function advanceTaskPlan(taskPlan, toolName, params = {}) {
+  if (!taskPlan || taskPlan.length === 0) {
+    return [];
+  }
+
+  const next = taskPlan.map((step) => ({ ...step }));
+  const reviewIndex = next.findIndex((step) => step.id === "review-plan");
+  if (reviewIndex !== -1) {
+    next[reviewIndex] = markDone(next[reviewIndex], "The plan is locked in.");
+  }
+
+  const target = toolTargets(toolName, params);
+  if (!target) {
+    return next;
+  }
+
+  const targetIndex = next.findIndex((step) => step.id === target.stepId);
+  if (targetIndex === -1) {
+    return next;
+  }
+
+  next[targetIndex] = markActive(next[targetIndex], target.progress, target.detail);
+  return next;
+}
+
+function finalizeTaskPlan(taskPlan) {
+  return (taskPlan || []).map((step) => markDone(step));
+}
+
 module.exports = {
+  advanceTaskPlan,
   buildTaskPlan,
+  deriveOverallProgress,
+  finalizeTaskPlan,
   parsePlanFromSpeech,
 };

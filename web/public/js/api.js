@@ -14,4 +14,9 @@ const Api = {
       clearTimeout(timeout);
     }
   },
+
+  async getPlan() {
+    const res = await fetch("/plan");
+    return res.json();
+  },
 };

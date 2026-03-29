@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-  TaskPanel.init();
+  BuildCard.init();
   Chat.init();
   VoiceOutput.init();
   VoiceInput.init();
@@ -9,25 +9,22 @@ document.addEventListener("DOMContentLoaded", () => {
     buildStatus: "Tell Archie what to build",
   });
 
-  const waitForDiorama = setInterval(() => {
-    if (window.Diorama) {
-      clearInterval(waitForDiorama);
-      window.Diorama.init();
-    }
-  }, 50);
-
   Chat.onUserMessageStart = (text) => {
     if (window.Avatar) {
       window.Avatar.setState("thinking");
     }
     beginPlanRequest(text);
+    startPlanPolling();
   };
 
   Chat.onRequestSuccess = ({ response, speech }) => {
-    syncTaskPlanFromResponse(response, speech);
+    stopPlanPolling();
+    syncBuildSessionPayload(response, speech);
   };
 
   Chat.onRequestError = () => {
+    stopPlanPolling();
+    BuildCard.renderActive(null);
     if (window.Avatar) {
       window.Avatar.setState("idle");
     }
@@ -115,27 +112,64 @@ document.addEventListener("DOMContentLoaded", () => {
         Chat.addMessage("assistant", data.speech);
         VoiceOutput.speak(data.speech);
       }
+      syncBuildSessionPayload(data, data.speech);
     })
     .catch((err) => console.error("Start error:", err));
 
   console.log("Archie app initialized");
 });
 
+let planPollHandle = null;
+
 function beginPlanRequest(text) {
-  if (!BuildState.state.steps.length) {
-    BuildState.reset();
-  }
+  BuildState.reset();
+  BuildCard.renderActive(null);
   BuildState.update({
     avatarState: "thinking",
     buildStatus: `Planning ${summarizeTopic(text)}...`,
   });
 }
 
-function syncTaskPlanFromResponse(response, speech) {
-  const taskPlan = response?.taskPlan || [];
-  const planStatus = response?.plan?.status || null;
+function startPlanPolling() {
+  stopPlanPolling();
+  planPollHandle = window.setInterval(async () => {
+    try {
+      const response = await Api.getPlan();
+      syncBuildSessionPayload(response, undefined, { fromPoll: true });
+    } catch (err) {
+      console.error("Plan polling error:", err);
+    }
+  }, 600);
+}
 
-  if (!taskPlan.length) {
+function stopPlanPolling() {
+  if (planPollHandle) {
+    window.clearInterval(planPollHandle);
+    planPollHandle = null;
+  }
+}
+
+function syncBuildSessionPayload(response, speech, options = {}) {
+  const { fromPoll = false } = options;
+  const archivedSessions = response?.archivedBuildSessions || [];
+  const activeSession = response?.activeBuildSession || null;
+  const shouldStickToBottom = Chat.shouldStickToBottom();
+  if (!fromPoll) {
+    archivedSessions.forEach((session) => {
+      Chat.addBuildSession(session);
+    });
+  }
+
+  BuildCard.renderActive(activeSession);
+  if (activeSession && shouldStickToBottom) {
+    Chat.scrollToBottom();
+  }
+
+  if (fromPoll && !activeSession) {
+    return;
+  }
+
+  if (!activeSession && archivedSessions.length === 0) {
     BuildState.update({
       avatarState: "idle",
       buildStatus: speech ? clipDetail(speech, "Ready for the next idea") : "Ready for the next idea",
@@ -143,51 +177,31 @@ function syncTaskPlanFromResponse(response, speech) {
     return;
   }
 
-  const steps = taskPlan.map((step) => ({ ...step }));
-  const firstStepId = steps[0]?.id || null;
-
-  if (planStatus === "waiting_approval") {
-    steps[0] = {
-      ...steps[0],
-      status: "active",
-      progress: 5,
-      detail: "Plan ready. Say go when it looks right.",
-    };
-
-    BuildState.setTaskPlan(steps, {
+  if (activeSession) {
+    BuildState.setTaskPlan(activeSession.tasks, {
       avatarState: "idle",
-      activeStepId: firstStepId,
-      buildStatus: "Plan ready to review",
+      activeStepId: getActiveTaskId(activeSession.tasks),
+      buildStatus: activeSession.summary,
     });
     return;
   }
 
-  if (planStatus === "building") {
-    steps.forEach((step, index) => {
-      if (index === 0) {
-        step.status = "done";
-        step.progress = 100;
-        step.detail = "The plan is locked in.";
-      } else if (index === 1) {
-        step.status = "active";
-        step.progress = 24;
-        step.detail = clipDetail(speech, step.detail);
-      }
-    });
-
-    BuildState.setTaskPlan(steps, {
-      avatarState: "idle",
-      activeStepId: steps[1]?.id || firstStepId,
-      buildStatus: "Building the game",
-    });
-    return;
-  }
-
-  BuildState.setTaskPlan(steps, {
+  const latestArchived = archivedSessions[archivedSessions.length - 1];
+  BuildState.setTaskPlan(latestArchived.tasks, {
     avatarState: "idle",
-    activeStepId: firstStepId,
-    buildStatus: "Tracking the build",
+    activeStepId: null,
+    buildStatus: latestArchived.summary || speech || "Build complete",
   });
+}
+
+function getActiveTaskId(tasks) {
+  const active = tasks.find((task) => task.status === "active");
+  if (active) {
+    return active.id;
+  }
+
+  const pending = tasks.find((task) => task.status !== "done");
+  return pending ? pending.id : tasks[0]?.id || null;
 }
 
 function summarizeTopic(text) {

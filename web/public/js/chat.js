@@ -1,9 +1,11 @@
 const Chat = {
-  history: [], // { role: "user" | "assistant", content: string }
-  historyEl: document.getElementById("chat-history"),
-  inputEl: document.getElementById("chat-input"),
+  history: [], // { type: "text" | "build-session", ... }
 
   init() {
+    this.scrollEl = document.getElementById("chat-scroll");
+    this.historyEl = document.getElementById("chat-history");
+    this.inputEl = document.getElementById("chat-input");
+
     // Send on Enter key
     this.inputEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && this.inputEl.value.trim()) {
@@ -11,15 +13,71 @@ const Chat = {
         this.inputEl.value = "";
       }
     });
+
+    this.historyEl.addEventListener("click", (event) => {
+      const toggle = event.target.closest("[data-session-toggle]");
+      if (!toggle) {
+        return;
+      }
+
+      this.history = window.ChatModel.toggleBuildSessionExpanded(
+        this.history,
+        toggle.dataset.sessionToggle
+      );
+      this.renderHistory();
+    });
   },
 
   addMessage(role, text) {
-    this.history.push({ role, content: text });
-    const div = document.createElement("div");
-    div.className = `chat-msg ${role === "user" ? "user" : "archie"}`;
-    div.textContent = text;
-    this.historyEl.appendChild(div);
-    this.historyEl.scrollTop = this.historyEl.scrollHeight;
+    const scrollToBottom = role === "user" ? true : this.shouldStickToBottom();
+    this.history.push({ type: "text", role, content: text });
+    this.renderHistory({ scrollToBottom });
+  },
+
+  addBuildSession(session) {
+    const scrollToBottom = this.shouldStickToBottom();
+    this.history = window.ChatModel.addArchivedBuildSession(this.history, session);
+    this.renderHistory({ scrollToBottom });
+  },
+
+  renderHistory(options = {}) {
+    const { scrollToBottom = false } = options;
+
+    this.historyEl.innerHTML = this.history
+      .map((item) => {
+        if (item.type === "build-session") {
+          return window.BuildCard.renderArchived(item.session, item.expanded);
+        }
+
+        return `
+          <div class="chat-msg ${item.role === "user" ? "user" : "archie"}">
+            ${item.content}
+          </div>
+        `;
+      })
+      .join("");
+
+    if (scrollToBottom) {
+      this.scrollToBottom();
+    }
+  },
+
+  scrollToBottom() {
+    if (!this.scrollEl) {
+      return;
+    }
+
+    this.scrollEl.scrollTop = this.scrollEl.scrollHeight;
+  },
+
+  shouldStickToBottom(threshold = 96) {
+    if (!this.scrollEl) {
+      return true;
+    }
+
+    const distanceFromBottom =
+      this.scrollEl.scrollHeight - this.scrollEl.clientHeight - this.scrollEl.scrollTop;
+    return distanceFromBottom <= threshold;
   },
 
   async handleUserMessage(text) {
