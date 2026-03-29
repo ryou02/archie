@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const next = require("next");
 const Anthropic = require("@anthropic-ai/sdk");
+const sdk = require("microsoft-cognitiveservices-speech-sdk");
 const { TOOL_DEFINITIONS } = require("./tools.js");
 const {
   createBuildSession,
@@ -16,6 +17,94 @@ const nextApp = next({ dev });
 const handle = nextApp.getRequestHandler();
 
 const anthropic = new Anthropic();
+
+function audioOffsetToMs(audioOffset) {
+  return Math.max(0, Math.round((audioOffset + 5000) / 10000));
+}
+
+function escapeXml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+async function synthesizeSpeechWithDeepgram(text) {
+  const deepgramKey = process.env.DEEPGRAM_API_KEY;
+
+  if (!deepgramKey) {
+    throw new Error("Deepgram speech credentials are missing.");
+  }
+
+  const ttsRes = await fetch("https://api.deepgram.com/v1/speak?model=aura-asteria-en", {
+    method: "POST",
+    headers: {
+      Authorization: `Token ${deepgramKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ text }),
+  });
+
+  if (!ttsRes.ok) {
+    throw new Error(`Deepgram TTS error: ${ttsRes.status}`);
+  }
+
+  const arrayBuffer = await ttsRes.arrayBuffer();
+  const audio = Buffer.from(arrayBuffer).toString("base64");
+
+  return { audio, visemes: [] };
+}
+
+async function synthesizeSpeechWithVisemes(text) {
+  const speechKey = process.env.AZURE_SPEECH_KEY;
+  const speechRegion = process.env.AZURE_SPEECH_REGION;
+
+  if (!speechKey || !speechRegion) {
+    return synthesizeSpeechWithDeepgram(text);
+  }
+
+  const speechConfig = sdk.SpeechConfig.fromSubscription(speechKey, speechRegion);
+  const speechVoice = process.env.AZURE_SPEECH_VOICE || "en-US-JennyNeural";
+  speechConfig.speechSynthesisVoiceName = speechVoice;
+  speechConfig.speechSynthesisOutputFormat =
+    sdk.SpeechSynthesisOutputFormat.Audio24Khz48KBitRateMonoMp3;
+
+  const visemes = [];
+  const synthesizer = new sdk.SpeechSynthesizer(speechConfig);
+  synthesizer.visemeReceived = (_, event) => {
+    visemes.push({
+      time: audioOffsetToMs(event.audioOffset),
+      id: event.visemeId,
+    });
+  };
+
+  try {
+    const ssml = [
+      `<speak version="1.0" xml:lang="en-US" xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="https://www.w3.org/2001/mstts">`,
+      `<voice name="${escapeXml(speechVoice)}">`,
+      `<mstts:viseme type="redlips_front"/>`,
+      escapeXml(text),
+      `</voice>`,
+      `</speak>`,
+    ].join("");
+
+    const result = await new Promise((resolve, reject) => {
+      synthesizer.speakSsmlAsync(ssml, resolve, reject);
+    });
+
+    if (result.reason !== sdk.ResultReason.SynthesizingAudioCompleted) {
+      const details = sdk.SpeechSynthesisCancellationDetails.fromResult(result);
+      throw new Error(details.errorDetails || "Azure speech synthesis failed.");
+    }
+
+    const audio = Buffer.from(result.audioData).toString("base64");
+    return { audio, visemes };
+  } finally {
+    synthesizer.close();
+  }
+}
 
 const SYSTEM_PROMPT = `You are Archie, a friendly AI game-building assistant inside Roblox Studio. You help kids build FULL Roblox games through conversation.
 
@@ -550,15 +639,8 @@ nextApp.prepare().then(() => {
   app.post("/tts", async (req, res) => {
     const { text } = req.body;
     try {
-      const ttsRes = await fetch("https://api.deepgram.com/v1/speak?model=aura-asteria-en", {
-        method: "POST",
-        headers: { Authorization: `Token ${process.env.DEEPGRAM_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      if (!ttsRes.ok) throw new Error(`Deepgram TTS error: ${ttsRes.status}`);
-      const arrayBuffer = await ttsRes.arrayBuffer();
-      res.set("Content-Type", "audio/mpeg");
-      res.send(Buffer.from(arrayBuffer));
+      const { audio, visemes } = await synthesizeSpeechWithVisemes(text);
+      res.json({ audio, visemes });
     } catch (err) {
       console.error("TTS error:", err);
       res.status(500).json({ error: "TTS failed" });

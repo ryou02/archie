@@ -1,11 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
-import { getTTS } from "@/lib/api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { getTTS, type TTSVisemeCue } from "@/lib/api";
+
+function createAudioObjectUrl(audioBase64: string): string {
+  const binary = window.atob(audioBase64);
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  const blob = new Blob([bytes], { type: "audio/mpeg" });
+  return URL.createObjectURL(blob);
+}
 
 export function useVoiceOutput() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
+  const [visemes, setVisemes] = useState<TTSVisemeCue[]>([]);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const stop = useCallback(() => {
     if (audioRef.current) {
@@ -17,6 +26,9 @@ export function useVoiceOutput() {
       URL.revokeObjectURL(objectUrlRef.current);
       objectUrlRef.current = null;
     }
+
+    setIsPlaying(false);
+    setVisemes([]);
   }, []);
 
   const speak = useCallback(
@@ -27,27 +39,28 @@ export function useVoiceOutput() {
 
       stop();
 
-      const arrayBuffer = await getTTS(text);
-      const blob = new Blob([arrayBuffer], { type: "audio/mpeg" });
-      const objectUrl = URL.createObjectURL(blob);
-      const audio = new Audio(objectUrl);
+      const { audio, visemes } = await getTTS(text);
+      const objectUrl = createAudioObjectUrl(audio);
+      const audioElement = new Audio(objectUrl);
 
+      setVisemes(visemes);
       objectUrlRef.current = objectUrl;
-      audioRef.current = audio;
+      audioRef.current = audioElement;
 
-      audio.onended = () => {
+      audioElement.onended = () => {
         stop();
       };
-      audio.onerror = () => {
+      audioElement.onerror = () => {
         stop();
       };
 
-      await audio.play();
+      await audioElement.play();
+      setIsPlaying(true);
     },
     [stop]
   );
 
   useEffect(() => stop, [stop]);
 
-  return { speak, stop };
+  return { speak, stop, visemes, isPlaying, audioRef };
 }

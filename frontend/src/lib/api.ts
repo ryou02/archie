@@ -10,6 +10,16 @@ export interface PlanSnapshot {
   archivedBuildSessions?: BuildSession[];
 }
 
+export interface TTSVisemeCue {
+  time: number;
+  id: number;
+}
+
+export interface TTSResponse {
+  audio: string;
+  visemes: TTSVisemeCue[];
+}
+
 export async function startSession(): Promise<PlanSnapshot> {
   const res = await fetch(`${API_BASE}/start`, { method: "POST" });
   return res.json();
@@ -38,13 +48,18 @@ export async function getStatus(): Promise<{ status: string; pluginConnected: bo
   return res.json();
 }
 
-export async function getTTS(text: string): Promise<ArrayBuffer> {
+export async function getTTS(text: string): Promise<TTSResponse> {
   const res = await fetch(`${API_BASE}/tts`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text }),
   });
-  return res.arrayBuffer();
+
+  if (!res.ok) {
+    throw new Error(`TTS request failed with status ${res.status}`);
+  }
+
+  return res.json();
 }
 
 export async function getDeepgramKey(): Promise<string> {
