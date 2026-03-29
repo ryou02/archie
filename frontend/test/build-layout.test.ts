@@ -111,6 +111,40 @@ test("chat panel owns the build progress and approval summary surfaces", () => {
   assert.doesNotMatch(buildPage, /workspace-summary glass-shell glass-shell--panel absolute/);
 });
 
+test("chat composer nests the mic inside the input shell and uses an arrow-only send control", () => {
+  assert.match(chatPanel, /chat-panel__composer/);
+  assert.match(chatPanel, /chat-input-shell/);
+  assert.match(chatPanel, /chat-input-control/);
+  assert.match(chatPanel, /chat-input-action/);
+  assert.match(chatPanel, /btn-send btn-send--icon/);
+  assert.match(chatPanel, /aria-label="Send message"/);
+  assert.match(chatPanel, /aria-hidden="true"/);
+  assert.doesNotMatch(chatPanel, />\s*Send\s*</);
+});
+
+test("composer CSS supports an inline mic capsule and compact arrow send control", () => {
+  assert.match(globalsCss, /\.chat-input-shell\s*\{/s);
+  assert.match(globalsCss, /\.chat-input-control\s*\{/s);
+  assert.match(globalsCss, /\.chat-input-action\s*\{/s);
+  assert.match(globalsCss, /\.btn-send--icon\s*\{/s);
+  assert.match(globalsCss, /\.btn-mic--inline\s*\{/s);
+});
+
+test("composer CSS keeps the old pill treatment while compacting the controls", () => {
+  assert.match(
+    globalsCss,
+    /\.chat-input-shell\s*\{[^}]*min-height:\s*3rem;[^}]*border-radius:\s*999px;[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.065\);[^}]*border:\s*1px solid rgba\(234,\s*244,\s*255,\s*0\.12\);/s
+  );
+  assert.match(
+    globalsCss,
+    /\.btn-send--icon\s*\{[^}]*border-radius:\s*999px;[^}]*background:\s*linear-gradient/s
+  );
+  assert.match(
+    globalsCss,
+    /\.btn-mic--inline\s*\{[^}]*min-width:\s*2\.75rem;[^}]*border-radius:\s*999px;/s
+  );
+});
+
 test("avatar scene avoids generic bounds fitting and uses explicit framing transforms", () => {
   const avatarExperience = readFileSync(
     path.join(process.cwd(), "src/components/AvatarExperience.tsx"),

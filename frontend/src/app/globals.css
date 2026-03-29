@@ -438,6 +438,35 @@ body {
 
 .chat-panel__composer {
   border-top: 1px solid rgba(255, 255, 255, 0.07);
+  align-items: center;
+}
+
+.chat-input-shell {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 3rem;
+  padding: 0.2rem 0.24rem 0.2rem 1rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.065);
+  border: 1px solid rgba(234, 244, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 10px 24px rgba(3, 11, 28, 0.12);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast), background var(--t-fast);
+}
+
+.chat-input-shell:focus-within {
+  border-color: rgba(241, 248, 255, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(241, 248, 255, 0.14);
+}
+
+.chat-input-action {
+  flex: none;
 }
 
 .chat-bubble {
@@ -463,19 +492,25 @@ body {
 }
 
 .chat-input {
-  background: rgba(255, 255, 255, 0.065);
-  border: 1px solid rgba(234, 244, 255, 0.12);
+  min-width: 0;
   color: var(--text-primary);
   font-family: var(--font-body), sans-serif;
 }
 
-.chat-input::placeholder {
+.chat-input-control {
+  flex: 1 1 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  line-height: 1.2;
+}
+
+.chat-input-control::placeholder {
   color: var(--text-muted);
 }
 
-.chat-input:focus-visible {
-  outline: 1px solid rgba(241, 248, 255, 0.22);
-  outline-offset: 1px;
+.chat-input-control:focus-visible {
+  outline: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -518,6 +553,22 @@ body {
 
   .chat-panel__meta {
     max-height: min(34vh, 20rem);
+  }
+
+  .chat-input-shell {
+    min-width: 0;
+  }
+
+  .btn-send--icon {
+    min-width: 2.75rem;
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .btn-mic--inline {
+    min-width: 2.25rem;
+    width: 2.25rem;
+    height: 2.25rem;
   }
 }
 
@@ -792,6 +843,18 @@ body {
 .btn-send:disabled { opacity: 0.3; cursor: not-allowed; }
 .btn-send:focus-visible { outline: 1px solid var(--ambient-edge-bright); outline-offset: 2px; }
 
+.btn-send--icon {
+  min-width: 3rem;
+  width: 3rem;
+  height: 3rem;
+  padding: 0;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(160, 208, 243, 0.08));
+  flex: none;
+  flex-shrink: 0;
+}
+
 .btn-mic {
   display: inline-flex;
   align-items: center;
@@ -809,6 +872,18 @@ body {
   text-transform: uppercase;
   cursor: pointer;
   transition: transform var(--t-fast), background var(--t-fast), box-shadow var(--t-fast), border-color var(--t-fast);
+}
+
+.btn-mic--inline {
+  min-width: 2.75rem;
+  width: 2.75rem;
+  height: 2.6rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .btn-mic:hover:not(:disabled) {
@@ -832,6 +907,91 @@ body {
 .btn-mic:focus-visible {
   outline: 1px solid var(--ambient-edge-bright);
   outline-offset: 2px;
+}
+
+.btn-mic--inline.btn-mic--active {
+  background:
+    linear-gradient(180deg, rgba(236, 246, 255, 0.16), rgba(148, 198, 236, 0.1));
+  color: var(--text-primary);
+}
+
+.icon-mic,
+.icon-send {
+  position: relative;
+  display: block;
+  color: currentColor;
+}
+
+.icon-mic {
+  width: 0.95rem;
+  height: 1rem;
+}
+
+.icon-mic::before,
+.icon-mic::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.icon-mic::before {
+  top: 0.05rem;
+  width: 0.42rem;
+  height: 0.58rem;
+  border: 1.6px solid currentColor;
+  border-bottom-width: 2.2px;
+  border-radius: 0.35rem;
+}
+
+.icon-mic::after {
+  bottom: 0.08rem;
+  width: 0.68rem;
+  height: 0.44rem;
+  border: 1.6px solid currentColor;
+  border-top: 0;
+  border-radius: 0 0 0.5rem 0.5rem;
+}
+
+.icon-mic__stem {
+  position: absolute;
+  left: 50%;
+  bottom: -0.02rem;
+  width: 2px;
+  height: 0.28rem;
+  border-radius: 999px;
+  background: currentColor;
+  transform: translateX(-50%);
+}
+
+.icon-send {
+  width: 1rem;
+  height: 1rem;
+}
+
+.icon-send::before,
+.icon-send::after {
+  content: "";
+  position: absolute;
+}
+
+.icon-send::before {
+  top: 0.43rem;
+  left: 0.08rem;
+  width: 0.64rem;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.icon-send::after {
+  top: 0.24rem;
+  right: 0.1rem;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-top: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+  transform: rotate(45deg);
 }
 
 /* ================================================================

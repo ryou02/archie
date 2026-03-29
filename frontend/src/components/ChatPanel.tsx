@@ -285,46 +285,47 @@ export default function ChatPanel({
       </div>
 
       <div className="chat-panel__composer flex gap-2 px-4 pb-4 pt-3">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-          placeholder="Tell Archie what to build..."
-          disabled={disabled}
-          className="chat-input flex-1 rounded-full px-4 py-3 text-sm outline-none"
-        />
-        <button
-          onClick={handleSubmit}
-          disabled={disabled || !input.trim()}
-          className="btn-send"
-        >
-          Send
-        </button>
+        <div className="chat-input-shell flex flex-1 items-center gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+            placeholder="Tell Archie what to build..."
+            disabled={disabled}
+            className="chat-input chat-input-control flex-1 text-sm outline-none"
+          />
+          <button
+            type="button"
+            disabled={disabled || !effectiveMicSupported}
+            className={`chat-input-action btn-mic btn-mic--inline ${micState !== "idle" ? "btn-mic--active" : ""}`}
+            onPointerDown={handleMicStart}
+            onPointerUp={handleMicStop}
+            onPointerLeave={handleMicStop}
+            onPointerCancel={handleMicStop}
+            aria-label="Hold to talk"
+            title={
+              effectiveMicSupported
+                ? micState === "recording"
+                  ? "Release to send"
+                  : "Hold to talk"
+                : "Voice input unavailable"
+            }
+          >
+            <span className="icon-mic" aria-hidden="true">
+              <span className="icon-mic__stem" />
+            </span>
+          </button>
+        </div>
         <button
           type="button"
-          disabled={disabled || !effectiveMicSupported}
-          className={`btn-mic ${micState !== "idle" ? "btn-mic--active" : ""}`}
-          onPointerDown={handleMicStart}
-          onPointerUp={handleMicStop}
-          onPointerLeave={handleMicStop}
-          onPointerCancel={handleMicStop}
-          aria-label="Hold to talk"
-          title={
-            effectiveMicSupported
-              ? micState === "recording"
-                ? "Release to send"
-                : "Hold to talk"
-              : "Voice input unavailable"
-          }
+          onClick={handleSubmit}
+          disabled={disabled || !input.trim()}
+          className="btn-send btn-send--icon"
+          aria-label="Send message"
+          title="Send message"
         >
-          {effectiveMicSupported
-            ? micState === "recording"
-              ? "Rec"
-              : micState === "connecting"
-                ? "..."
-                : "Mic"
-            : "Mic"}
+          <span className="icon-send" aria-hidden="true" />
         </button>
       </div>
     </div>
