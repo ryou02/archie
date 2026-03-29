@@ -4,7 +4,7 @@
 
 <p align="center">
   A voice-enabled AI agent that helps kids build Roblox games through conversation.<br/>
-  28+ unique tools — reads game state for context, finds and inserts assets, builds and scripts, all through natural conversation.<br/>
+  28+ unique tools: reads game state for context, finds and inserts assets, builds and scripts, all through natural conversation.<br/>
   A live activity feed in the Roblox Studio plugin shows exactly which tools are being used and what Archie is doing in real time.
 </p>
 
