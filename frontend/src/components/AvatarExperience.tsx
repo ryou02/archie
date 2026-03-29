@@ -19,8 +19,7 @@ export default function AvatarExperience({
 }: AvatarExperienceProps) {
   return (
     <div className="workspace-avatar__canvas" aria-hidden="true">
-      <Canvas camera={{ position: [0, 1.22, 2.7], fov: 18 }}>
-        <color attach="background" args={["#08111c"]} />
+      <Canvas gl={{ alpha: true }} camera={{ position: [0, 1.12, 3.05], fov: 18 }}>
         <ambientLight intensity={0.7} />
         <directionalLight
           position={[2.6, 3.2, 4.8]}

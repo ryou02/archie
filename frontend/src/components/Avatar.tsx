@@ -186,9 +186,9 @@ export default function Avatar({
   return (
     <group
       ref={groupRef}
-      position={[0, -2.02, 0.08]}
-      rotation={[0, 0.08, 0]}
-      scale={3.45}
+      position={[0, -1.7, 0.08]}
+      rotation={[-0.2, 0.08, 0]}
+      scale={2.8}
     >
       <primitive object={avatarScene} />
     </group>

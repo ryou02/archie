@@ -42,7 +42,7 @@
   --text-muted: rgba(223, 234, 247, 0.46);
 
   --workspace-edge-gap: 1rem;
-  --workspace-top-offset: 6.25rem;
+  --workspace-top-offset: var(--workspace-edge-gap);
   --workspace-chat-width: clamp(24rem, 30vw, 28rem);
   --workspace-stack-avatar-height: clamp(15rem, 34vh, 20rem);
 
@@ -385,16 +385,6 @@ body {
   isolation: isolate;
 }
 
-.workspace-avatar::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 24% 20%, rgba(224, 240, 255, 0.12), transparent 26%),
-    linear-gradient(90deg, rgba(8, 17, 28, 0.04), rgba(8, 17, 28, 0.08) 62%, rgba(8, 17, 28, 0.28));
-}
-
 .workspace-avatar__canvas {
   width: 100%;
   height: 100%;
@@ -403,6 +393,7 @@ body {
 .workspace-rail {
   position: relative;
   min-height: 0;
+  padding: 0.3rem 0.8rem 0.9rem 0.25rem;
 }
 
 .workspace-chat {

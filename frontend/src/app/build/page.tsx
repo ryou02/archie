@@ -1,12 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import AmbientBackground from "@/components/AmbientBackground";
 import AvatarExperience from "@/components/AvatarExperience";
 import ChatPanel from "@/components/ChatPanel";
-import ProgressBar from "@/components/ProgressBar";
-import StatusDot from "@/components/StatusDot";
 import {
   mergeArchivedBuildSessions,
   toggleBuildSessionExpanded,
@@ -198,41 +195,6 @@ export default function BuildPage() {
   return (
     <div className="relative h-screen overflow-hidden">
       <AmbientBackground surface="build" />
-
-      <header
-        className="workspace-header glass-shell glass-shell--quiet absolute top-3 z-20 flex items-center justify-between px-4 py-3 sm:px-6"
-      >
-        <div className="flex items-center gap-3">
-          <div className="workspace-mark">
-            <Image
-              src="/logo-mark.png"
-              alt="Archie mark"
-              className="workspace-mark__image"
-              width={250}
-              height={250}
-              priority
-            />
-          </div>
-        </div>
-
-        {tasks.length > 0 ? (
-          <div className="flex-1 min-w-0 max-w-xs mx-4 sm:mx-8">
-            <div className="flex items-center gap-3">
-              <ProgressBar percent={overallProgress} />
-              <span
-                className="text-xs font-mono font-bold shrink-0"
-                style={{ color: "var(--ambient-edge-bright)" }}
-              >
-                {overallProgress}%
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="flex-1" />
-        )}
-
-        <StatusDot />
-      </header>
 
       <div className="workspace-layout">
         <section className="workspace-stage">
