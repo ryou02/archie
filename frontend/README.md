@@ -50,14 +50,14 @@ ANTHROPIC_API_KEY=your_anthropic_key
 DEEPGRAM_API_KEY=your_deepgram_key
 AZURE_SPEECH_KEY=your_azure_speech_key
 AZURE_SPEECH_REGION=your_azure_region
-AZURE_SPEECH_VOICE=en-US-JennyNeural
+AZURE_SPEECH_VOICE=en-US-GuyNeural
 ```
 
 Notes:
 
 - `DEEPGRAM_API_KEY` is used for speech synthesis fallback and browser voice features.
 - `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION` enable Azure speech synthesis with viseme support.
-- `AZURE_SPEECH_VOICE` is optional; the app defaults to `en-US-JennyNeural`.
+- `AZURE_SPEECH_VOICE` is optional; the app defaults to `en-US-GuyNeural`.
 - Keep real keys out of version control.
 
 ### Useful Scripts

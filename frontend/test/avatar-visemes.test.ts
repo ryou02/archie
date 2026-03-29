@@ -46,6 +46,11 @@ test("tts server falls back to Deepgram JSON audio when Azure speech credentials
   assert.match(serverSource, /return \{ audio, visemes: \[\] \}/);
 });
 
+test("tts defaults use male voices for both providers", () => {
+  assert.match(serverSource, /process\.env\.DEEPGRAM_TTS_MODEL \|\| "aura-2-orion-en"/);
+  assert.match(serverSource, /process\.env\.AZURE_SPEECH_VOICE \|\| "en-US-GuyNeural"/);
+});
+
 test("tts returns a silent payload when no speech provider credentials are configured", () => {
   assert.match(serverSource, /if \(!speechKey \|\| !speechRegion\)/);
   assert.match(serverSource, /if \(!deepgramKey\) \{\s*return \{ audio: "", visemes: \[\] \};\s*\}/s);

@@ -15,6 +15,8 @@ const { buildTaskPlan, parsePlanFromSpeech } = require("./task-plan.js");
 const dev = process.env.NODE_ENV !== "production";
 const nextApp = next({ dev });
 const handle = nextApp.getRequestHandler();
+const defaultDeepgramTtsModel = process.env.DEEPGRAM_TTS_MODEL || "aura-2-orion-en";
+const defaultAzureSpeechVoice = process.env.AZURE_SPEECH_VOICE || "en-US-GuyNeural";
 
 const anthropic = new Anthropic();
 
@@ -38,7 +40,7 @@ async function synthesizeSpeechWithDeepgram(text) {
     return { audio: "", visemes: [] };
   }
 
-  const ttsRes = await fetch("https://api.deepgram.com/v1/speak?model=aura-asteria-en", {
+  const ttsRes = await fetch(`https://api.deepgram.com/v1/speak?model=${defaultDeepgramTtsModel}`, {
     method: "POST",
     headers: {
       Authorization: `Token ${deepgramKey}`,
@@ -66,7 +68,7 @@ async function synthesizeSpeechWithVisemes(text) {
   }
 
   const speechConfig = sdk.SpeechConfig.fromSubscription(speechKey, speechRegion);
-  const speechVoice = process.env.AZURE_SPEECH_VOICE || "en-US-JennyNeural";
+  const speechVoice = defaultAzureSpeechVoice;
   speechConfig.speechSynthesisVoiceName = speechVoice;
   speechConfig.speechSynthesisOutputFormat =
     sdk.SpeechSynthesisOutputFormat.Audio24Khz48KBitRateMonoMp3;
