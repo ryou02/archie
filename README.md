@@ -78,9 +78,3 @@ AZURE_SPEECH_VOICE=en-US-GuyNeural
 - `DEEPGRAM_API_KEY` — speech synthesis fallback and browser voice features.
 - `AZURE_SPEECH_KEY` / `AZURE_SPEECH_REGION` — Azure speech synthesis with viseme support.
 - `AZURE_SPEECH_VOICE` — optional, defaults to `en-US-GuyNeural`.
-
-## Contributions
-
-- **Basil Liu** — Built the frontend experience, build workspace UI, styling, chat flow, voice-input integration, and frontend tests. I worked closely with him on the overall UX direction.
-- **tourist67** — Handled server integration, API/data flow, task planning, and shared UI components used by the build interface.
-- Everything else (agent loop, plugin, tool system, architecture) was done by me.
