@@ -91,20 +91,21 @@ statusLabel.Parent = statusFrame
 local activityLabel = Instance.new("TextLabel")
 activityLabel.Size = UDim2.new(1, 0, 0, 20)
 activityLabel.BackgroundTransparency = 1
-activityLabel.Text = "Activity"
+activityLabel.Text = "Tools Used"
 activityLabel.TextColor3 = WHITE
 activityLabel.Font = Enum.Font.GothamBold
-activityLabel.TextSize = 14
+activityLabel.TextSize = 13
 activityLabel.TextXAlignment = Enum.TextXAlignment.Left
 activityLabel.LayoutOrder = 2
 activityLabel.Parent = mainFrame
 
 -- Activity feed (scrollable)
 local activityScroll = Instance.new("ScrollingFrame")
-activityScroll.Size = UDim2.new(1, 0, 1, -120)
+activityScroll.Size = UDim2.new(1, 0, 1, -70)
 activityScroll.BackgroundColor3 = PANEL_COLOR
 activityScroll.BorderSizePixel = 0
-activityScroll.ScrollBarThickness = 6
+activityScroll.ScrollBarThickness = 4
+activityScroll.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 120)
 activityScroll.LayoutOrder = 3
 activityScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 activityScroll.Parent = mainFrame
@@ -124,30 +125,6 @@ activityLayout.SortOrder = Enum.SortOrder.LayoutOrder
 activityLayout.Padding = UDim.new(0, 4)
 activityLayout.Parent = activityScroll
 
--- History label
-local historyLabel = Instance.new("TextLabel")
-historyLabel.Size = UDim2.new(1, 0, 0, 20)
-historyLabel.BackgroundTransparency = 1
-historyLabel.Text = "History"
-historyLabel.TextColor3 = WHITE
-historyLabel.Font = Enum.Font.GothamBold
-historyLabel.TextSize = 14
-historyLabel.TextXAlignment = Enum.TextXAlignment.Left
-historyLabel.LayoutOrder = 4
-historyLabel.Parent = mainFrame
-
-local historyList = Instance.new("TextLabel")
-historyList.Size = UDim2.new(1, 0, 0, 60)
-historyList.BackgroundTransparency = 1
-historyList.Text = ""
-historyList.TextColor3 = Color3.fromRGB(150, 150, 150)
-historyList.Font = Enum.Font.Gotham
-historyList.TextSize = 11
-historyList.TextXAlignment = Enum.TextXAlignment.Left
-historyList.TextYAlignment = Enum.TextYAlignment.Top
-historyList.TextWrapped = true
-historyList.LayoutOrder = 5
-historyList.Parent = mainFrame
 
 -- Toggle widget visibility
 toggleButton.Click:Connect(function()
@@ -155,7 +132,6 @@ toggleButton.Click:Connect(function()
 end)
 
 -- State
-local historyEntries = {}
 local activityOrder = 0
 local consoleBuffer = {} -- stores recent log messages
 
@@ -192,15 +168,6 @@ local function addActivity(text, color)
 	activityScroll.CanvasPosition = Vector2.new(0, activityLayout.AbsoluteContentSize.Y)
 end
 
---- Update history display
-local function addHistory(desc)
-	table.insert(historyEntries, desc)
-	local lines = {}
-	for i = math.max(1, #historyEntries - 9), #historyEntries do
-		table.insert(lines, "• " .. historyEntries[i])
-	end
-	historyList.Text = table.concat(lines, "\n")
-end
 
 --- Resolve a dot-separated path like "Workspace.MyCar.Body" to an Instance
 local function resolvePath(pathStr)
@@ -864,7 +831,6 @@ while true do
 			local success, result = pcall(handler, params)
 			if success then
 				addActivity("✓ " .. toolName, GREEN)
-				addHistory(toolName)
 				request("POST", "/tool-queue/result", { id = id, result = result })
 			else
 				addActivity("✗ " .. toolName .. ": " .. tostring(result), RED)
