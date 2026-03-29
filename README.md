@@ -1,4 +1,28 @@
-# Archie
+<p align="center">
+  <img src="preview/logo.png" alt="Archie" width="400" />
+</p>
+
+<p align="center">
+  A voice-enabled AI agent that helps kids build Roblox games through conversation.
+</p>
+
+---
+
+## Preview
+
+<p align="center">
+  <img src="preview/Screenshot 2026-03-29 at 7.25.11 PM.png" alt="Chat interface with 3D avatar" width="700" />
+</p>
+
+<p align="center">
+  <img src="preview/Screenshot 2026-03-29 at 7.23.56 PM.png" alt="Game built in Roblox Studio" width="700" />
+</p>
+
+## Architecture
+
+<p align="center">
+  <img src="preview/Screenshot 2026-03-29 at 7.27.05 PM.png" alt="Tech stack" width="700" />
+</p>
 
 ## What This Project Does
 
