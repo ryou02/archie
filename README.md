@@ -8,16 +8,6 @@
 
 ---
 
-## Preview
-
-<p align="center">
-  <img src="preview/chat.png" alt="Chat interface with 3D avatar" width="700" />
-</p>
-
-<p align="center">
-  <img src="preview/studio.png" alt="Game built in Roblox Studio" width="700" />
-</p>
-
 ## Architecture
 
 <p align="center">
