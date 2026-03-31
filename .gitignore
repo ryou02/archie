@@ -13,8 +13,9 @@ frontend/.env
 
 # Claude/AI files
 .claude/
-docs/superpowers/
-CLAUDE.md
+**/docs/superpowers/
+**/CLAUDE.md
+**/AGENTS.md
 .worktrees/
 
 # Node
