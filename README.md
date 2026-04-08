@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  A voice-enabled AI agent that helps kids build Roblox games through conversation.
+  A voice AI agent that helps kids build Roblox games through conversation.
 </p>
 
 ---
