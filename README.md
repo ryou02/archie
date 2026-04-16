@@ -7,6 +7,10 @@
 </p>
 
 ---
+## Preview 
+<p align="center">
+  <img src="preview/studio.png" alt="Tech stack" width="700" />
+</p>
 
 ## Architecture
 
